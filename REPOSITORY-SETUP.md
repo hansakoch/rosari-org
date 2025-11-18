@@ -24,7 +24,9 @@ Repository: sites
 
 ### Step 2: Automatic Prompts Begin
 
-As soon as the session starts, the **SessionStart hook** automatically runs and prompts you for:
+As soon as the session starts, the **session-start hook** automatically runs and prompts you for:
+
+**Note**: This hook is configured for **Claude Code on the web** (claude.ai/code). Once this repository is pushed to the default branch, all future sessions will automatically trigger the business information collection prompts.
 
 1. **Business Name** (e.g., "Acme-Plumbing")
    - This determines the final repo name: `Iceberg-Media/Acme-Plumbing`
