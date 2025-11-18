@@ -1,6 +1,53 @@
-# 🤖 Claude Code on Cloudflare
+# 🤖 Claude Code on Cloudflare - Icebergsites Template
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ghostwriternr/claude-code-containers)
+
+## 🏢 Iceberg Media - Icebergsites Workflow
+
+**⚠️ IMPORTANT**: This repository is configured for **Iceberg Media** projects only.
+
+- **Organization**: `Iceberg-Media`
+- **Cloudflare Account**: `0870b0bdbc14bcd31f43fe5e82c3ee8e`
+- **Repository Structure**: `Iceberg-Media/COMPANY_BIZ_NAME`
+
+### 🚀 Quick Start for New Icebergsites Project
+
+```bash
+# 1. Run the session startup script to collect business information
+bash .session-startup.sh
+
+# 2. Install dependencies
+npm install
+
+# 3. Set up local environment variables
+cp .dev.vars.template .dev.vars
+# Edit .dev.vars with actual credentials if needed
+
+# 4. Generate Cloudflare types
+npm run cf-typegen
+
+# 5. Start local development
+npm run dev
+
+# 6. Deploy to Cloudflare (Iceberg-Media account)
+npm run deploy
+```
+
+### 📋 Required Information Collection
+
+When starting a new project, you'll be prompted for:
+
+1. **🌟 Google Business Profile Share Link** (MOST IMPORTANT!)
+2. **📍 NAP+W**: Name, Address, Phone, Website
+3. **📱 Social Media**: Facebook, Instagram, LinkedIn, etc.
+4. **🏆 Memberships & Accreditations**: BBB, Chamber of Commerce, etc.
+5. **📂 Directory Listings**: Yelp, Apple Maps, Bing Places, etc.
+
+See **[SOP-ICEBERGSITES.md](./SOP-ICEBERGSITES.md)** for complete workflow documentation.
+
+---
+
+## 📖 About This Template
 
 This template provides a containerized environment on Cloudflare workers for Claude Code to process GitHub issues. It listens to new issues created from your connected repositories, and creates a Pull Request to solve them.
 

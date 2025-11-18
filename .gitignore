@@ -62,3 +62,6 @@ jspm_packages/
 
 # build files
 dist
+
+# icebergsites - business-specific config (generated per project)
+.business-config.json

@@ -1,0 +1,70 @@
+{
+  "projectInfo": {
+    "companyBizName": "COMPANY_NAME",
+    "companyLegalName": "Legal Business Name Inc.",
+    "companyDBA": "Doing Business As Name",
+    "createdAt": "2025-11-18T12:00:00Z",
+    "organization": "Iceberg-Media",
+    "repository": "Iceberg-Media/COMPANY_NAME"
+  },
+  "napw": {
+    "name": "Official Business Name",
+    "address": {
+      "street": "123 Main Street",
+      "city": "City Name",
+      "state": "State",
+      "zip": "12345",
+      "country": "USA",
+      "full": "123 Main Street, City Name, State 12345, USA"
+    },
+    "phone": "+1-555-123-4567",
+    "website": "https://www.example.com"
+  },
+  "googleBusinessProfile": {
+    "shareLink": "https://maps.app.goo.gl/EXAMPLE",
+    "placeId": "ChIJEXAMPLE",
+    "cid": "123456789"
+  },
+  "socialMedia": {
+    "facebook": "https://www.facebook.com/business",
+    "instagram": "https://www.instagram.com/business",
+    "twitter": "https://twitter.com/business",
+    "linkedin": "https://www.linkedin.com/company/business",
+    "youtube": "https://www.youtube.com/@business",
+    "tiktok": "https://www.tiktok.com/@business",
+    "pinterest": "https://www.pinterest.com/business",
+    "yelp": "https://www.yelp.com/biz/business"
+  },
+  "membershipsAccreditations": {
+    "bbb": "BBB Accredited - https://www.bbb.org/us/...",
+    "chamberOfCommerce": "Member - City Chamber of Commerce",
+    "professionalAssociations": "Industry Association Member",
+    "awards": "Best Business Award 2024",
+    "other": "Additional certifications or memberships"
+  },
+  "directoryListings": {
+    "appleMaps": "https://maps.apple.com/?q=business",
+    "bingPlaces": "https://www.bing.com/maps?q=business",
+    "yellowPages": "https://www.yellowpages.com/business",
+    "angi": "https://www.angi.com/companylist/business",
+    "houzz": "https://www.houzz.com/professionals/business",
+    "thumbtack": "https://www.thumbtack.com/business",
+    "other": "Additional directory listings (comma-separated)"
+  },
+  "contactInfo": {
+    "email": "info@example.com",
+    "phoneAlt": "+1-555-987-6543",
+    "fax": "+1-555-123-4568",
+    "businessHours": "Monday-Friday: 9:00 AM - 5:00 PM EST"
+  },
+  "businessDetails": {
+    "industry": "Professional Services",
+    "services": "Primary services and products offered",
+    "founded": "2020",
+    "employees": "10-50"
+  },
+  "cloudflare": {
+    "accountId": "0870b0bdbc14bcd31f43fe5e82c3ee8e",
+    "organization": "Iceberg-Media"
+  }
+}
