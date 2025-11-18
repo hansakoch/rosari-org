@@ -117,22 +117,9 @@ Click the deploy button above to instantly deploy to your Cloudflare account. Th
 - Durable Objects for secure storage
 - All necessary bindings and configurations
 
-### 2️⃣ Set Up Anthropic API
+### 2️⃣ Install GitHub App
 
-After deployment, you'll need to configure your Claude AI integration:
-
-1. **Get your Anthropic API key**:
-   - Visit [Anthropic Console](https://console.anthropic.com/)
-   - Create an API key with appropriate permissions
-
-2. **Configure the API key**:
-   - Navigate to your deployed worker's `/claude-setup` endpoint
-   - Enter your Anthropic API key
-   - The system will securely encrypt and store your credentials
-
-### 3️⃣ Install GitHub App
-
-Once you complete the Anthropic API setup, you'll be redirected to the `/gh-setup` endpoint (or you can access it manually), which will guide you through installing the GitHub App and configuring access to your repositories. The system will automatically capture installation details.
+Navigate to the `/gh-setup` endpoint, which will guide you through installing the GitHub App and configuring access to your repositories. The system will automatically capture installation details.
 
 
 ## 📋 Usage
