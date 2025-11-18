@@ -2,46 +2,95 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/ghostwriternr/claude-code-containers)
 
-## 🏢 Iceberg Media - Icebergsites Workflow
+## 🏢 Iceberg Media - Automatic Icebergsites Workflow
 
-**⚠️ IMPORTANT**: This repository is configured for **Iceberg Media** projects only.
+**⚠️ TEMPLATE REPOSITORY**: `Iceberg-Media/sites`
 
-- **Organization**: `Iceberg-Media`
-- **Cloudflare Account**: `0870b0bdbc14bcd31f43fe5e82c3ee8e`
-- **Repository Structure**: `Iceberg-Media/COMPANY_BIZ_NAME`
+This repository should be deployed at **`Iceberg-Media/sites`** and used as a template for all icebergsites projects.
 
-### 🚀 Quick Start for New Icebergsites Project
+### ⚡ How It Works (FULLY AUTOMATIC!)
+
+1. **Select Repository**: Choose `Iceberg-Media/sites` when starting Claude Code
+2. **Auto-Prompts Begin**: Session hook automatically starts collecting business information
+3. **Answer Questions**: Provide business details in this order:
+   - 🏢 **Business Name** (creates repo: `Iceberg-Media/YOUR-BIZ-NAME`)
+   - 🌟 **GBP Share Link** (MOST IMPORTANT!)
+   - 📍 **NAP+W** (Name, Address, Phone, Website)
+   - 📱 **Social Media**, 🏆 **Accreditations**, 📂 **Directories**, etc.
+4. **Auto-Configuration**: `.business-config.json` is generated automatically
+5. **Start Building**: Claude is ready to build your icebergsites project!
+
+**No manual scripts to run. No configuration files to edit. Just answer the prompts!**
+
+---
+
+## 🎯 What You'll Be Prompted For
+
+When you start a session, you'll be asked for:
+
+### 🌟 Priority #1: Google Business Profile
+- **GBP Share Link** (CRITICAL for local SEO)
+- GBP Place ID (optional)
+- GBP CID (optional)
+
+### 📍 Core Business Information (NAP+W)
+- Business Name
+- Complete Address
+- Primary Phone
+- Website URL
+
+### 📱 Social Media Platforms
+- Facebook, Instagram, Twitter/X
+- LinkedIn, YouTube, TikTok
+- Pinterest, Yelp
+
+### 🏆 Trust Signals
+- BBB Accreditation
+- Chamber of Commerce
+- Professional Associations
+- Industry Awards
+
+### 📂 Directory Listings
+- Apple Maps, Bing Places
+- Yellow Pages, Angi
+- Houzz, Thumbtack
+- Other directories
+
+### 📞 Additional Details
+- Contact info (email, alt phone, fax)
+- Business hours
+- Industry, services, founding year, employees
+
+---
+
+## 📋 After Auto-Setup Completes
+
+Once the automatic prompts finish, run:
 
 ```bash
-# 1. Run the session startup script to collect business information
-bash .session-startup.sh
-
-# 2. Install dependencies
+# 1. Install dependencies
 npm install
 
-# 3. Set up local environment variables
+# 2. Set up environment (if needed)
 cp .dev.vars.template .dev.vars
-# Edit .dev.vars with actual credentials if needed
 
-# 4. Generate Cloudflare types
+# 3. Generate Cloudflare types
 npm run cf-typegen
 
-# 5. Start local development
+# 4. Start local development
 npm run dev
 
-# 6. Deploy to Cloudflare (Iceberg-Media account)
+# 5. Deploy to Cloudflare (Iceberg-Media account)
 npm run deploy
 ```
 
-### 📋 Required Information Collection
+---
 
-When starting a new project, you'll be prompted for:
+## 📊 Repository Structure
 
-1. **🌟 Google Business Profile Share Link** (MOST IMPORTANT!)
-2. **📍 NAP+W**: Name, Address, Phone, Website
-3. **📱 Social Media**: Facebook, Instagram, LinkedIn, etc.
-4. **🏆 Memberships & Accreditations**: BBB, Chamber of Commerce, etc.
-5. **📂 Directory Listings**: Yelp, Apple Maps, Bing Places, etc.
+**Template Repo**: `Iceberg-Media/sites` ← Select this when starting Claude Code
+**Generated Project Repo**: `Iceberg-Media/YOUR-BIZ-NAME` ← Auto-created from your input
+**Cloudflare Account**: `0870b0bdbc14bcd31f43fe5e82c3ee8e` (Iceberg-Media)
 
 See **[SOP-ICEBERGSITES.md](./SOP-ICEBERGSITES.md)** for complete workflow documentation.
 

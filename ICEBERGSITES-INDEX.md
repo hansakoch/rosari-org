@@ -6,20 +6,27 @@ Complete guide to working with icebergsites projects in the Iceberg-Media organi
 
 ## 📖 Documentation Files
 
-### 1. [README.md](./README.md)
-**Quick overview and general project information**
-- Iceberg-Media organization structure
-- Basic quick start commands
+### 1. [REPOSITORY-SETUP.md](./REPOSITORY-SETUP.md) 🏢
+**CRITICAL: Repository location and structure**
+- Where this template should live (`Iceberg-Media/sites`)
+- How the automatic workflow works
+- Repository naming conventions
+- First-time setup instructions
+
+### 2. [README.md](./README.md)
+**Quick overview and automatic workflow**
+- How the automatic prompts work
+- What information will be collected
 - Template features and capabilities
 
-### 2. [QUICKSTART-ICEBERGSITES.md](./QUICKSTART-ICEBERGSITES.md) ⚡
+### 3. [QUICKSTART-ICEBERGSITES.md](./QUICKSTART-ICEBERGSITES.md) ⚡
 **START HERE for new projects**
-- Step-by-step new project setup
+- Automatic session start workflow
 - Essential commands reference
+- Super quick TL;DR version
 - Common troubleshooting
-- Quick verification checklist
 
-### 3. [SOP-ICEBERGSITES.md](./SOP-ICEBERGSITES.md) 📋
+### 4. [SOP-ICEBERGSITES.md](./SOP-ICEBERGSITES.md) 📋
 **Complete Standard Operating Procedure**
 - Detailed workflow documentation
 - Business information collection requirements
@@ -27,7 +34,7 @@ Complete guide to working with icebergsites projects in the Iceberg-Media organi
 - Security guidelines
 - Full troubleshooting guide
 
-### 4. [CLAUDE.md](./CLAUDE.md) 🤖
+### 5. [CLAUDE.md](./CLAUDE.md) 🤖
 **Claude Code integration instructions**
 - Development commands
 - Tech stack architecture
@@ -59,23 +66,26 @@ Complete guide to working with icebergsites projects in the Iceberg-Media organi
 
 ## 🚀 Workflow Summary
 
-### For New Projects:
+### For New Projects (FULLY AUTOMATIC!):
 
+**Step 1: Select Template**
+- Open Claude Code
+- Select: `Iceberg-Media/sites`
+
+**Step 2: Answer Auto-Prompts**
+- SessionStart hook automatically begins
+- Answer questions about business (name, GBP link, NAP+W, etc.)
+- `.business-config.json` auto-generated
+
+**Step 3: Build & Deploy**
 ```bash
-# 1. Collect business information
-bash .session-startup.sh
-
-# 2. Install and configure
 npm install
-cp .dev.vars.template .dev.vars
 npm run cf-typegen
-
-# 3. Develop and test
-npm run dev
-
-# 4. Deploy
-npm run deploy
+npm run dev      # Test locally
+npm run deploy   # Deploy to Iceberg-Media Cloudflare
 ```
+
+**No manual script running needed - it's all automatic!**
 
 ### Critical Information Priority:
 
@@ -153,10 +163,11 @@ Use this before every deployment:
 
 **Need to...**
 
-- **Start a new project?** → Read [QUICKSTART-ICEBERGSITES.md](./QUICKSTART-ICEBERGSITES.md)
-- **Understand the full workflow?** → Read [SOP-ICEBERGSITES.md](./SOP-ICEBERGSITES.md)
-- **Configure Claude Code?** → Read [CLAUDE.md](./CLAUDE.md)
-- **Get general overview?** → Read [README.md](./README.md)
+- **Set up the template repository?** → Read [REPOSITORY-SETUP.md](./REPOSITORY-SETUP.md) 🏢
+- **Start a new project?** → Read [QUICKSTART-ICEBERGSITES.md](./QUICKSTART-ICEBERGSITES.md) ⚡
+- **Understand the automatic workflow?** → Read [README.md](./README.md)
+- **Understand the full SOP?** → Read [SOP-ICEBERGSITES.md](./SOP-ICEBERGSITES.md) 📋
+- **Configure Claude Code?** → Read [CLAUDE.md](./CLAUDE.md) 🤖
 - **Troubleshoot issues?** → Check [QUICKSTART-ICEBERGSITES.md](./QUICKSTART-ICEBERGSITES.md) or [SOP-ICEBERGSITES.md](./SOP-ICEBERGSITES.md)
 
 ---

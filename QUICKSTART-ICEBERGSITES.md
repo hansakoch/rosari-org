@@ -1,16 +1,30 @@
 # ⚡ ICEBERGSITES QUICK START GUIDE
 
-## 🎯 For New Projects
+## 🎯 For New Projects (FULLY AUTOMATIC!)
 
-### Step 1: Run Setup Script
+### Step 1: Select Template Repository
 
-```bash
-bash .session-startup.sh
+In Claude Code, select:
+```
+Organization: Iceberg-Media
+Repository: sites
 ```
 
-This will prompt you for all business information. **Most important: GBP Share Link!**
+### Step 2: Answer Automatic Prompts
 
-### Step 2: Review Configuration
+The SessionStart hook **automatically begins** prompting you for:
+
+1. **Business Name** (repo will be: `Iceberg-Media/YOUR-BIZ-NAME`)
+2. **🌟 GBP Share Link** (MOST IMPORTANT!)
+3. **📍 NAP+W** (Name, Address, Phone, Website)
+4. **📱 Social Media** (Facebook, Instagram, etc.)
+5. **🏆 Accreditations** (BBB, Chamber, etc.)
+6. **📂 Directories** (Yelp, Apple Maps, etc.)
+7. **📞 Contact Details** (Email, hours, etc.)
+
+**Just answer the questions - no scripts to run manually!**
+
+### Step 3: Review Auto-Generated Config
 
 ```bash
 cat .business-config.json
@@ -21,20 +35,20 @@ Verify all information is correct, especially:
 - ✅ GBP share link (critical for SEO)
 - ✅ NAP+W information (Name, Address, Phone, Website)
 
-### Step 3: Set Up Environment
+### Step 4: Set Up Environment
 
 ```bash
-# Copy template
-cp .dev.vars.template .dev.vars
-
 # Install dependencies
 npm install
+
+# Copy environment template (if needed)
+cp .dev.vars.template .dev.vars
 
 # Generate Cloudflare types
 npm run cf-typegen
 ```
 
-### Step 4: Test Locally
+### Step 5: Test Locally
 
 ```bash
 npm run dev
@@ -42,13 +56,24 @@ npm run dev
 
 Visit `http://localhost:8787` to test your worker.
 
-### Step 5: Deploy
+### Step 6: Deploy
 
 ```bash
 npm run deploy
 ```
 
 Deploys to Iceberg-Media Cloudflare account automatically.
+
+---
+
+## ⚡ Super Quick Version (TL;DR)
+
+1. Open Claude Code → Select `Iceberg-Media/sites`
+2. Answer the automatic prompts
+3. Run: `npm install && npm run cf-typegen && npm run dev`
+4. Deploy: `npm run deploy`
+
+**Done!**
 
 ---
 
