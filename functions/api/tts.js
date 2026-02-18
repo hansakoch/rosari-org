@@ -24,7 +24,7 @@
  */
 
 const CACHE_VERSION = 'v4-realtime';
-const XAI_REALTIME  = 'https://api.x.ai/v1/realtime'; // CF Workers upgrades to wss://
+const XAI_REALTIME  = 'https://api.x.ai/v1/realtime?model=grok-2-audio'; // CF Workers upgrades to wss://
 const SAMPLE_RATE   = 24000;
 const NUM_CHANNELS  = 1;
 const BITS          = 16;
