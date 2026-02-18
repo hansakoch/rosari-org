@@ -298,8 +298,11 @@ import KaraokeText from '../components/KaraokeText.astro';
   function startLanguageSelection(): void {
     showVoicePrompt();
     ambientAudio.start(0.05);
-    // Immediately show ready state — no browser speech dependency
-    updateVoiceStatus('Type your language below and press Begin.', false);
+    updateVoiceStatus('', false);
+    // Focus the input after overlay animates in
+    setTimeout(() => {
+      el<HTMLInputElement>('language-text-input')?.focus();
+    }, 400);
   }
 
   function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
