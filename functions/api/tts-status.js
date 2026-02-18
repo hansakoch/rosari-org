@@ -36,7 +36,8 @@ export async function onRequestGet(context) {
 
     const ws = wsRes.webSocket;
     if (!ws) {
-      status.websocket_test = { ok: false, error: `HTTP ${wsRes.status} — upgrade failed` };
+      const body = await wsRes.text().catch(() => '');
+      status.websocket_test = { ok: false, error: `HTTP ${wsRes.status} — upgrade failed`, body: body.slice(0, 300) };
     } else {
       ws.accept();
 
