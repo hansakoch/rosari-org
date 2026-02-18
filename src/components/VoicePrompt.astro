@@ -1,29 +1,28 @@
 ---
-// VoicePrompt.astro — Clean, inclusive language selection screen
+// VoicePrompt.astro — Language selection screen
 ---
-<div id="voice-prompt-overlay" role="dialog" aria-modal="true" aria-label="Language selection" style="display:none;">
+<div id="voice-prompt-overlay" role="dialog" aria-modal="true" aria-label="Begin rosary" style="display:none;">
   <div class="vp-inner">
     <div class="vp-cross" aria-hidden="true">✝</div>
     <h1 class="vp-title">Rosari</h1>
     <p class="vp-subtitle">The Holy Rosary</p>
 
-    <p class="vp-status" id="voice-status">Choose your language to begin.</p>
-
-    <p class="vp-question">What language would you like to pray the Rosary in?</p>
+    <p class="vp-question">In which tongue shall we pray?</p>
 
     <div class="vp-text-row">
       <input
         id="language-text-input"
         type="text"
-        placeholder="Type any language…"
+        placeholder="English, Español, Latin, Tagalog…"
         autocomplete="off"
         spellcheck="false"
-        aria-label="Type your language"
+        aria-label="Enter your prayer language"
+        autofocus
       />
       <button id="language-text-submit" class="vp-go-btn" aria-label="Begin">Begin</button>
     </div>
 
-    <p class="vp-hint">Say or type any language — your voice, your tongue, your prayer.</p>
+    <p id="voice-status" class="vp-status"></p>
   </div>
 </div>
 
@@ -33,7 +32,7 @@
     <p>Welcome back. Continue in <strong class="resume-lang"></strong>?</p>
     <div class="resume-btns">
       <button id="resume-yes-btn" class="btn-gold">Yes, begin</button>
-      <button id="resume-no-btn" class="btn-ghost">Choose language</button>
+      <button id="resume-no-btn" class="btn-ghost">Change</button>
     </div>
   </div>
 </div>
@@ -61,8 +60,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.1rem;
-    max-width: 440px;
+    gap: 1.2rem;
+    max-width: 420px;
     width: 100%;
     text-align: center;
     animation: fadeInUp 1s ease forwards;
@@ -94,40 +93,14 @@
     margin-top: -0.4rem;
   }
 
-  .vp-mic-ring {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    border: 2px solid var(--gold-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.4s, box-shadow 0.4s;
-  }
-
-  .vp-mic-ring.listening {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-glow), 0 0 0 8px transparent;
-    animation: pulseListening 1.5s ease-in-out infinite;
-  }
-
-  .vp-mic-core { font-size: 1.9rem; user-select: none; }
-
-  .vp-status {
-    font-size: 1rem;
-    color: var(--text-dim);
-    min-height: 2.2em;
-    transition: color 0.3s;
-  }
-
-  .vp-status.listening { color: var(--accent2); }
-
   .vp-question {
     font-family: 'Cinzel', serif;
-    font-size: clamp(1rem, 3.5vw, 1.25rem);
+    font-size: clamp(0.95rem, 3vw, 1.15rem);
     color: var(--gold-light);
     letter-spacing: 0.05em;
     line-height: 1.5;
     font-weight: 400;
+    opacity: 0.85;
   }
 
   .vp-text-row {
@@ -139,24 +112,25 @@
 
   #language-text-input {
     flex: 1;
-    padding: 0.7rem 1rem;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--border);
     border-radius: 4px;
-    background: rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.05);
     color: var(--text);
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     outline: none;
     letter-spacing: 0.02em;
+    transition: border-color 0.2s, background 0.2s;
   }
 
   #language-text-input:focus {
     border-color: var(--gold-dim);
-    background: rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.08);
   }
 
   .vp-go-btn {
-    padding: 0.7rem 1.4rem;
+    padding: 0.75rem 1.4rem;
     background: var(--gold-dim);
     color: var(--bg);
     border-radius: 4px;
@@ -171,13 +145,13 @@
   .vp-go-btn:hover { background: var(--gold); transform: scale(1.03); }
   .vp-go-btn:active { transform: scale(0.98); }
 
-  .vp-hint {
+  .vp-status {
     font-family: 'Cormorant Garamond', serif;
     font-style: italic;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    line-height: 1.6;
-    max-width: 320px;
+    font-size: 0.95rem;
+    color: var(--accent2);
+    min-height: 1.4em;
+    transition: color 0.3s;
   }
 
   /* Resume banner */
