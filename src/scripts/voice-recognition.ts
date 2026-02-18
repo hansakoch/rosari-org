@@ -153,13 +153,20 @@ export function speakWithSynthesis(opts: SpeechOptions): { stop: () => void; pau
   utterance.pitch = opts.pitch ?? 0.9;  // Slightly deeper
   utterance.volume = opts.volume ?? 1.0;
 
-  // Pick best voice for the language
+  // Pick the richest available voice for this language
   const voices = synth.getVoices();
-  const langVoices = voices.filter(v => v.lang.startsWith(opts.lang.split('-')[0]!));
-  if (langVoices.length > 0) {
-    // Prefer local voices; among those pick one (prefer female for Hail Mary, male for Our Father)
-    utterance.voice = langVoices[0]!;
-  }
+  const langCode = opts.lang.split('-')[0]!;
+  const langVoices = voices.filter(v => v.lang.toLowerCase().startsWith(langCode.toLowerCase()));
+
+  // Priority order: Enhanced/Neural > Natural > Google > named non-default > default[0]
+  const preferredVoice =
+    langVoices.find(v => /enhanced|neural|premium/i.test(v.name)) ||
+    langVoices.find(v => /natural/i.test(v.name)) ||
+    langVoices.find(v => /google/i.test(v.name)) ||
+    langVoices.find(v => !v.default) ||
+    langVoices[0];
+
+  if (preferredVoice) utterance.voice = preferredVoice;
 
   // Track word boundaries for karaoke
   let wordIdx = 0;

@@ -7,121 +7,106 @@ import KaraokeText from '../components/KaraokeText.astro';
 
 <Layout title="Rosari — The Holy Rosary" description="Pray the complete Holy Rosary in any language. A reverent, offline-capable Catholic rosary web app. No ads, no tracking, pure prayer.">
 
-  <!-- Voice Prompt Overlay -->
   <VoicePrompt />
 
-  <!-- Main App -->
-  <main id="rosary-app" class="rosary-app">
+  <div class="rosary-app" id="rosary-app">
 
-    <!-- Header -->
+    <!-- ── Header ─────────────────────────────────────────── -->
     <header class="app-header">
-      <div class="header-cross" aria-hidden="true">✝</div>
-      <div class="header-center">
-        <h1 class="site-title">Rosari</h1>
-        <div id="mystery-banner" class="mystery-banner"></div>
+      <div class="hdr-left">
+        <span class="hdr-cross" aria-hidden="true">✝</span>
+        <span class="hdr-title">Rosari</span>
+        <span id="mystery-banner" class="hdr-mystery"></span>
       </div>
-      <div class="header-controls">
-        <button id="theme-toggle" class="ctrl-btn" aria-label="Toggle day/night mode" title="Toggle day/night mode">
-          ☀️ Day
-        </button>
-        <button id="change-language-btn" class="ctrl-btn" aria-label="Change language" title="Change language">
-          🌐
-        </button>
+      <div class="hdr-right">
+        <button id="theme-toggle" class="hdr-btn" aria-label="Toggle day/night">🌙</button>
+        <button id="change-language-btn" class="hdr-btn" aria-label="Change language" title="Change language">🌐</button>
       </div>
     </header>
 
-    <!-- Progress Bar -->
-    <div class="progress-container" role="progressbar" aria-label="Rosary progress">
-      <div class="progress-bar">
-        <div id="progress-bar-inner" class="progress-bar-inner"></div>
-      </div>
-      <span id="progress-label" class="progress-label">0 / 0</span>
+    <!-- ── Thin progress bar ──────────────────────────────── -->
+    <div class="progress-bar-wrap" role="progressbar" aria-label="Rosary progress">
+      <div id="progress-bar-inner" class="progress-bar-fill"></div>
     </div>
 
-    <!-- Rosary Content -->
-    <div class="rosary-content">
-      <!-- Left/Top: Bead Visualization -->
-      <aside class="bead-panel" aria-label="Rosary beads">
-        <RosaryBeads />
-      </aside>
-
-      <!-- Right/Bottom: Text & Controls -->
-      <div class="prayer-panel">
-        <KaraokeText />
-
-        <!-- Playback Controls -->
-        <div class="playback-controls" role="group" aria-label="Playback controls">
-          <button id="prev-btn" class="ctrl-round" aria-label="Previous prayer" title="Previous">
-            ⏮
-          </button>
-          <button id="play-pause-btn" class="ctrl-main" aria-label="Begin rosary">
-            ▶ Begin
-          </button>
-          <button id="next-btn" class="ctrl-round" aria-label="Skip prayer" title="Next">
-            ⏭
-          </button>
-        </div>
-
-        <!-- Bottom actions -->
-        <div class="bottom-actions">
-          <button id="download-offline-btn" class="action-btn" aria-label="Download rosary for offline use">
-            📥 Download for Lent
-          </button>
-        </div>
-      </div>
+    <!-- ── Rosary visualization (fills all free space) ───── -->
+    <div class="bead-stage" aria-label="Rosary beads">
+      <RosaryBeads />
     </div>
 
-    <!-- Finished Message -->
-    <div id="finished-message" class="finished-message" style="display:none;" role="status">
-      <div class="finished-cross" aria-hidden="true">✝</div>
-      <p class="finished-text">Praised be Jesus Christ.</p>
-      <p class="finished-sub">The Rosary is complete. Go in peace.</p>
-      <button id="restart-btn" class="ctrl-main" style="margin-top:1rem;">Pray Again</button>
+    <!-- ── Karaoke text window ────────────────────────────── -->
+    <div class="text-stage">
+      <KaraokeText />
     </div>
 
-    <!-- Footer -->
-    <footer class="app-footer">
-      <p>
-        <span class="footer-cross" aria-hidden="true">✝</span>
-        Ave Maria, gratia plena
-        <span class="footer-cross" aria-hidden="true">✝</span>
-      </p>
-      <p class="footer-sub">rosari.org — No ads. No tracking. Pure prayer.</p>
+    <!-- ── Controls ───────────────────────────────────────── -->
+    <div class="controls-bar" role="group" aria-label="Playback controls">
+      <button id="prev-btn" class="ctrl-skip" aria-label="Previous prayer">⏮</button>
+      <button id="play-pause-btn" class="ctrl-main" aria-label="Begin rosary">▶ Begin</button>
+      <button id="next-btn" class="ctrl-skip" aria-label="Skip prayer">⏭</button>
+      <button id="download-offline-btn" class="ctrl-dl" aria-label="Download for offline use">📥</button>
+    </div>
+
+    <!-- ── Footer (dynamic liturgical season) ────────────── -->
+    <footer class="app-footer" id="app-footer">
+      <span class="ftr-cross" aria-hidden="true">✝</span>
+      <span id="season-tagline" class="ftr-tagline"></span>
+      <span class="ftr-cross" aria-hidden="true">✝</span>
+      <span class="ftr-brand">rosari.org</span>
     </footer>
-  </main>
+
+    <!-- ── Finished overlay ───────────────────────────────── -->
+    <div id="finished-message" class="finished-overlay" style="display:none;" role="status">
+      <div class="fin-cross" aria-hidden="true">✝</div>
+      <p class="fin-text">Praised be Jesus Christ.</p>
+      <p class="fin-sub">The Rosary is complete. Go in peace.</p>
+      <button id="restart-btn" class="ctrl-main" style="margin-top:1.2rem;">Pray Again</button>
+    </div>
+
+  </div>
 </Layout>
 
-<!-- Main app script -->
 <script>
-  import { getMysteryForDate, MYSTERY_SETS, PRAYERS, getBeadPositions, buildRosarySequence } from '../scripts/rosary-data.ts';
+  import {
+    getMysteryForDate, MYSTERY_SETS, PRAYERS, PRAYERS_LATIN,
+    buildRosarySequence, getLiturgicalSeason, getPrayerForLanguage
+  } from '../scripts/rosary-data.ts';
   import { RosaryEngine } from '../scripts/rosary-engine.ts';
   import { audioManager, ambientAudio } from '../scripts/audio-manager.ts';
   import { savePreferences, loadPreferences } from '../scripts/storage-manager.ts';
   import { startLanguagePrompt, announcePrompt, parseVoiceInput } from '../scripts/voice-recognition.ts';
 
-  // ── State ───────────────────────────────────────────────────
+  // ── State ──────────────────────────────────────────────────
   let engine: RosaryEngine | null = null;
   let currentLanguageCode = 'en-US';
   let currentLanguage = 'English';
-  let currentVoiceDesc = 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, mid-tempo, reverent';
+  let currentVoiceDesc = 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, slow, reverent';
   let isRunning = false;
   let isStopping = false;
   let recognitionController: { stop: () => void } | null = null;
 
-  function el<T extends HTMLElement = HTMLElement>(id: string): T | null {
-    return document.getElementById(id) as T | null;
+  const el = <T extends HTMLElement = HTMLElement>(id: string) =>
+    document.getElementById(id) as T | null;
+
+  // ── Liturgical season (set once on boot) ──────────────────
+  function initSeasonalFooter(): void {
+    const info = getLiturgicalSeason();
+    const tagline = el('season-tagline');
+    if (tagline) tagline.textContent = info.tagline;
+    const dlBtn = el('download-offline-btn');
+    if (dlBtn) dlBtn.title = info.downloadLabel;
   }
 
-  // ── Theme ───────────────────────────────────────────────────
+  // ── Theme ──────────────────────────────────────────────────
   function applyTheme(theme: 'night' | 'day'): void {
     document.documentElement.setAttribute('data-theme', theme);
     const btn = el('theme-toggle');
-    if (btn) btn.textContent = theme === 'night' ? '☀️ Day' : '🌙 Night';
+    if (btn) btn.textContent = theme === 'night' ? '☀️' : '🌙';
   }
 
   function detectAutoTheme(): 'night' | 'day' {
-    const hour = new Date().getHours();
-    return (hour >= 20 || hour < 7) ? 'night' : 'day';
+    const h = new Date().getHours();
+    return (h >= 20 || h < 7) ? 'night' : 'day';
   }
 
   function applyMysteryTheme(type: string): void {
@@ -134,17 +119,17 @@ import KaraokeText from '../components/KaraokeText.astro';
     }
   }
 
-  // ── Voice Prompt ────────────────────────────────────────────
+  // ── Voice Prompt ───────────────────────────────────────────
   function showVoicePrompt(): void {
     const o = el('voice-prompt-overlay');
-    if (o) o.style.display = 'flex';
+    if (o) { o.style.display = 'flex'; o.style.opacity = '1'; }
   }
 
   function hideVoicePrompt(): void {
     const o = el('voice-prompt-overlay');
     if (o) {
-      o.style.opacity = '0';
       o.style.transition = 'opacity 0.6s ease';
+      o.style.opacity = '0';
       setTimeout(() => { if (o) o.style.display = 'none'; }, 600);
     }
   }
@@ -154,93 +139,102 @@ import KaraokeText from '../components/KaraokeText.astro';
     if (!s) return;
     s.textContent = text;
     s.classList.toggle('listening', listening);
-    const ring = el('mic-ring');
-    ring?.classList.toggle('listening', listening);
+    el('mic-ring')?.classList.toggle('listening', listening);
   }
 
-  // ── Bead Update ─────────────────────────────────────────────
-  function updateBeads(activeBeadIndex: number): void {
-    document.querySelectorAll<SVGCircleElement>('.rosary-bead').forEach(bead => {
-      const idx = parseInt(bead.dataset['beadIdx'] ?? '-1');
-      bead.classList.toggle('active', idx === activeBeadIndex && activeBeadIndex >= 0);
-      bead.classList.toggle('prayed', activeBeadIndex >= 0 && idx >= 0 && idx < activeBeadIndex);
-    });
-
-    // Decade dots
-    if (activeBeadIndex >= 6) {
-      const decadeIdx = Math.floor((activeBeadIndex - 6) / 11);
-      document.querySelectorAll('.decade-dot').forEach((dot, i) => {
-        dot.classList.toggle('active', i === decadeIdx);
-        dot.classList.toggle('done', i < decadeIdx);
-      });
-    }
-  }
-
-  // ── Karaoke ─────────────────────────────────────────────────
+  // ── Karaoke: windowed display ──────────────────────────────
   function updateKaraoke(text: string, wordIdx: number, title: string): void {
     const container = el('karaoke-primary');
     if (!container) return;
-    const words = text.split(/\s+/);
-    container.innerHTML = words
-      .map((word, i) => {
-        const cls = i === wordIdx ? 'active' : i < wordIdx ? 'prayed' : '';
-        return `<span class="karaoke-word${cls ? ' '+cls : ''}" data-idx="${i}">${word}</span>`;
-      })
-      .join(' ');
-    const active = container.querySelector('.karaoke-word.active');
-    active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+
+    const words = text.split(/\s+/).filter(Boolean);
+    const BEFORE = 3;   // words shown before current
+    const NEAR   = 2;   // words at medium opacity after current
+    const FAR    = 2;   // words at low opacity after those
+
+    const start = Math.max(0, wordIdx - BEFORE);
+    const end   = Math.min(words.length, wordIdx + NEAR + FAR + 1);
+
+    const parts: string[] = [];
+
+    if (start > 0) parts.push(`<span class="kw kw-ellipsis">…</span>`);
+
+    for (let i = start; i < end; i++) {
+      const w = words[i]!;
+      const dist = i - wordIdx;
+      let cls = 'kw';
+      if (dist < 0)          cls += ' kw-past';
+      else if (dist === 0)   cls += ' kw-active';
+      else if (dist <= NEAR) cls += ' kw-next';
+      else                   cls += ' kw-far';
+      parts.push(`<span class="${cls}">${w}</span>`);
+    }
+
+    if (end < words.length) parts.push(`<span class="kw kw-ellipsis">…</span>`);
+
+    container.innerHTML = parts.join(' ');
 
     const titleEl = el('prayer-title');
     if (titleEl) titleEl.textContent = title;
   }
 
-  function updateMysteryDisplay(mysteryName: string, meditationText: string, isMysteryStep: boolean): void {
-    const announcement = el('mystery-announcement');
-    const nameEl = el('mystery-name');
-    const meditationEl = el('mystery-meditation');
-    if (announcement) announcement.style.display = isMysteryStep ? 'block' : 'none';
-    if (nameEl) nameEl.textContent = mysteryName;
-    if (meditationEl) meditationEl.textContent = meditationText;
+  // ── Bead update ────────────────────────────────────────────
+  function updateBeads(activeBeadIndex: number): void {
+    (window as any).updateBeads?.(activeBeadIndex);
   }
 
+  // ── Mystery display ────────────────────────────────────────
+  function updateMysteryDisplay(name: string, meditation: string, isMystery: boolean): void {
+    el('mystery-announcement')?.style.setProperty('display', isMystery ? 'block' : 'none');
+    const nameEl = el('mystery-name');
+    const medEl  = el('mystery-meditation');
+    if (nameEl) nameEl.textContent = name;
+    if (medEl)  medEl.textContent  = meditation;
+  }
+
+  // ── Progress bar ───────────────────────────────────────────
   function updateProgress(step: number, total: number): void {
     const bar = el('progress-bar-inner');
-    const label = el('progress-label');
     if (bar) bar.style.width = `${total > 0 ? (step / total) * 100 : 0}%`;
-    if (label) label.textContent = `${step + 1} / ${total}`;
   }
 
-  // ── Main State Render ────────────────────────────────────────
+  // ── Localized prayer text lookup ──────────────────────────
+  function getPrayerText(prayerKey: string): { text: string; title: string } {
+    const prayer = getPrayerForLanguage(prayerKey, currentLanguage);
+    return { text: prayer.text, title: prayer.title };
+  }
+
+  // ── Main render ────────────────────────────────────────────
   function renderState(state: ReturnType<RosaryEngine['getState']>): void {
     applyMysteryTheme(state.mysteryType);
     updateBeads(state.currentBeadIndex);
 
     const isMystery = state.currentStep.prayer === 'mysteryAnnounce';
-    const text = isMystery
-      ? `${state.currentPrayerTitle}. ${state.currentMeditationText}`
-      : state.currentPrayerText;
 
-    updateKaraoke(state.currentPrayerText, state.wordIndex, state.currentPrayerTitle);
+    // Use localized prayer text for display
+    const localPrayer = isMystery
+      ? { text: state.currentMeditationText, title: state.currentPrayerTitle }
+      : getPrayerText(state.currentStep.prayer);
+
+    updateKaraoke(
+      localPrayer.text || state.currentPrayerText,
+      state.wordIndex,
+      localPrayer.title || state.currentPrayerTitle
+    );
+
     updateMysteryDisplay(state.currentMysteryName, state.currentMeditationText, isMystery);
     updateProgress(state.currentStepIndex, state.totalSteps);
 
-    // Banner
     const banner = el('mystery-banner');
     if (banner) banner.textContent = MYSTERY_SETS[state.mysteryType]?.name ?? '';
 
-    // Play/pause button
-    const btn = el('play-pause-btn');
-    if (btn) {
-      btn.textContent = state.engineState === 'playing' ? '⏸ Pause'
+    const playBtn = el('play-pause-btn');
+    if (playBtn) {
+      playBtn.textContent = state.engineState === 'playing' ? '⏸ Pause'
         : state.engineState === 'paused' ? '▶ Resume'
         : '▶ Begin';
     }
 
-    // Language badge
-    const badge = el('lang-badge-primary');
-    if (badge) badge.textContent = state.language;
-
-    // Finished
     if (state.engineState === 'finished') {
       isRunning = false;
       const msg = el('finished-message');
@@ -248,25 +242,30 @@ import KaraokeText from '../components/KaraokeText.astro';
     }
   }
 
-  // ── Playback Loop ────────────────────────────────────────────
+  // ── Playback loop ──────────────────────────────────────────
   async function playNextStep(): Promise<void> {
     if (!engine || !isRunning || isStopping) return;
     const state = engine.getState();
     if (state.engineState !== 'playing') return;
 
     const step = state.currentStep;
-    let text = state.currentPrayerText;
+    const isMystery = step.prayer === 'mysteryAnnounce';
 
-    if (step.prayer === 'mysteryAnnounce') {
-      text = `${state.currentPrayerTitle}. ${state.currentMeditationText}`;
+    // Use localized prayer text for TTS
+    let ttsText: string;
+    if (isMystery) {
+      ttsText = `${state.currentPrayerTitle}. ${state.currentMeditationText}`;
+    } else {
+      const localized = getPrayerText(step.prayer);
+      ttsText = localized.text || state.currentPrayerText;
     }
 
     const prayerKey = `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`;
 
     await audioManager.playStep(
-      text,
+      ttsText,
       {
-        text,
+        text: ttsText,
         language: currentLanguage,
         languageCode: currentLanguageCode,
         voiceDescription: currentVoiceDesc,
@@ -281,58 +280,47 @@ import KaraokeText from '../components/KaraokeText.astro';
 
     if (!isRunning || isStopping) return;
 
-    // Brief contemplative pause
-    const pause = step.prayer === 'mysteryAnnounce' ? 2000
-      : step.prayer === 'fatimaPrayer' ? 800
-      : step.prayer === 'gloryBe' ? 600
-      : 400;
+    const pause = step.prayer === 'mysteryAnnounce' ? 2200
+      : step.prayer === 'fatimaPrayer' ? 900
+      : step.prayer === 'gloryBe' ? 700
+      : 450;
 
     await new Promise(r => setTimeout(r, pause));
-
     if (!isRunning || isStopping) return;
 
     const hasNext = engine!.nextStep();
     const newState = engine!.getState();
     renderState(newState);
 
-    if (hasNext && isRunning && !isStopping) {
-      playNextStep();
-    }
+    if (hasNext && isRunning && !isStopping) playNextStep();
   }
 
-  // ── Language Selection ───────────────────────────────────────
+  // ── Language selection ─────────────────────────────────────
   function startLanguageSelection(): void {
     showVoicePrompt();
     ambientAudio.start(0.05);
 
     setTimeout(() => {
-      announcePrompt(
-        'What language would you like to pray the Rosary in? You may say for example: English, Tagalog with Filipino woman, Latin, or Polish.',
-        'en-US'
-      );
+      announcePrompt('What language would you like to pray the Rosary in?', 'en-US');
       updateVoiceStatus('Listening for your language…', true);
     }, 800);
 
     recognitionController = startLanguagePrompt(
-      (result) => {
-        handleLanguageSelected(result.language, result.languageCode, result.voiceDescription);
-      },
-      (err: string) => {
+      (result) => handleLanguageSelected(result.language, result.languageCode, result.voiceDescription),
+      (err) => {
         console.warn('Recognition error:', err);
-        updateVoiceStatus('Could not hear you — please type your language or choose below.', false);
+        updateVoiceStatus('Type your language below and press Begin.', false);
       },
-      () => {
-        updateVoiceStatus('Listening…', true);
-      }
+      () => updateVoiceStatus('Listening…', true)
     );
   }
 
   function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
-    currentLanguage = language;
+    currentLanguage    = language;
     currentLanguageCode = languageCode;
-    currentVoiceDesc = voiceDesc || 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, reverent';
+    currentVoiceDesc   = voiceDesc || 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, reverent';
 
-    updateVoiceStatus(`✝ Praying in ${language}${voiceDesc ? ` — ${voiceDesc}` : ''}`, false);
+    updateVoiceStatus(`✝ Praying in ${language}`, false);
     recognitionController?.stop();
 
     savePreferences({
@@ -341,23 +329,18 @@ import KaraokeText from '../components/KaraokeText.astro';
       theme: (document.documentElement.getAttribute('data-theme') as 'night' | 'day') || 'night',
     }).catch(() => {});
 
-    // Update badge
-    const badge = el('lang-badge-primary');
-    if (badge) { badge.textContent = language; badge.style.display = ''; }
-
     setTimeout(() => {
       hideVoicePrompt();
       if (!isRunning) startRosary();
-    }, 1000);
+    }, 800);
   }
 
-  // ── Start Rosary ─────────────────────────────────────────────
+  // ── Start rosary ───────────────────────────────────────────
   function startRosary(): void {
     const mysteryType = getMysteryForDate(new Date());
     engine = new RosaryEngine(mysteryType);
     engine.setLanguage(currentLanguage, currentVoiceDesc);
     engine.subscribe(renderState);
-
     isRunning = true;
     isStopping = false;
     engine.start();
@@ -365,36 +348,26 @@ import KaraokeText from '../components/KaraokeText.astro';
     playNextStep();
   }
 
-  // ── Controls ─────────────────────────────────────────────────
+  // ── Controls ───────────────────────────────────────────────
   el('play-pause-btn')?.addEventListener('click', () => {
     if (!engine) { startRosary(); return; }
     const state = engine.getState();
     if (state.engineState === 'playing') {
-      engine.pause();
-      audioManager.pause();
-      isRunning = false;
+      engine.pause(); audioManager.pause(); isRunning = false;
       renderState(engine.getState());
     } else if (state.engineState === 'paused') {
-      engine.resume();
-      audioManager.resume();
-      isRunning = true;
-      renderState(engine.getState());
-      playNextStep();
+      engine.resume(); audioManager.resume(); isRunning = true;
+      renderState(engine.getState()); playNextStep();
     } else {
-      isRunning = true;
-      engine.start();
-      renderState(engine.getState());
-      playNextStep();
+      isRunning = true; engine.start(); renderState(engine.getState()); playNextStep();
     }
   });
 
   el('prev-btn')?.addEventListener('click', () => {
     if (!engine) return;
-    isStopping = true;
-    audioManager.stop();
+    isStopping = true; audioManager.stop();
     setTimeout(() => {
-      isStopping = false;
-      engine!.prevStep();
+      isStopping = false; engine!.prevStep();
       renderState(engine!.getState());
       if (isRunning) playNextStep();
     }, 100);
@@ -402,11 +375,9 @@ import KaraokeText from '../components/KaraokeText.astro';
 
   el('next-btn')?.addEventListener('click', () => {
     if (!engine) return;
-    isStopping = true;
-    audioManager.stop();
+    isStopping = true; audioManager.stop();
     setTimeout(() => {
-      isStopping = false;
-      engine!.nextStep();
+      isStopping = false; engine!.nextStep();
       renderState(engine!.getState());
       if (isRunning) playNextStep();
     }, 100);
@@ -416,33 +387,20 @@ import KaraokeText from '../components/KaraokeText.astro';
     const cur = document.documentElement.getAttribute('data-theme');
     const next = cur === 'day' ? 'night' : 'day';
     applyTheme(next);
-    savePreferences({
-      language: currentLanguage,
-      voiceDescription: currentVoiceDesc,
-      theme: next,
-    }).catch(() => {});
+    savePreferences({ language: currentLanguage, voiceDescription: currentVoiceDesc, theme: next }).catch(() => {});
   });
 
   el('change-language-btn')?.addEventListener('click', () => {
-    isStopping = true;
-    audioManager.stop();
-    isRunning = false;
-    setTimeout(() => {
-      isStopping = false;
-      startLanguageSelection();
-    }, 150);
+    isStopping = true; audioManager.stop(); isRunning = false;
+    setTimeout(() => { isStopping = false; startLanguageSelection(); }, 150);
   });
 
   el('restart-btn')?.addEventListener('click', () => {
-    const msg = el('finished-message');
-    if (msg) msg.style.display = 'none';
-    isRunning = false;
-    isStopping = false;
-    audioManager.stop();
+    el('finished-message')!.style.display = 'none';
+    isRunning = false; isStopping = false; audioManager.stop();
     startRosary();
   });
 
-  // Manual language text input
   el('language-text-submit')?.addEventListener('click', () => {
     const input = el<HTMLInputElement>('language-text-input');
     const text = input?.value.trim();
@@ -451,25 +409,24 @@ import KaraokeText from '../components/KaraokeText.astro';
     handleLanguageSelected(parsed.language, parsed.languageCode, parsed.voiceDescription);
   });
 
-  // Download offline
   el('download-offline-btn')?.addEventListener('click', async () => {
     const btn = el('download-offline-btn');
     if (!btn) return;
-    btn.textContent = 'Caching…';
+    const info = getLiturgicalSeason();
+    btn.title = 'Caching…';
     btn.setAttribute('disabled', 'true');
-
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type: 'CACHE_ALL' });
-    }
 
     const mysteryType = getMysteryForDate();
     const sequence = buildRosarySequence(mysteryType);
     let cached = 0;
 
     for (const step of sequence) {
-      const text = step.prayer === 'mysteryAnnounce'
-        ? `${MYSTERY_SETS[mysteryType].mysteries[step.mysteryIndex ?? 0]?.name ?? ''}`
-        : PRAYERS[step.prayer]?.text ?? '';
+      let text = '';
+      if (step.prayer === 'mysteryAnnounce') {
+        text = MYSTERY_SETS[mysteryType].mysteries[step.mysteryIndex ?? 0]?.name ?? '';
+      } else {
+        text = getPrayerForLanguage(step.prayer, currentLanguage).text;
+      }
       if (!text) continue;
 
       await audioManager.generateAudio({
@@ -480,15 +437,13 @@ import KaraokeText from '../components/KaraokeText.astro';
         prayerKey: `${step.prayer}-${step.decadeIndex ?? 0}-${step.hailMaryIndex ?? 0}`,
       });
       cached++;
-      btn.textContent = `Caching ${cached}/${sequence.length}…`;
     }
 
-    btn.textContent = '✓ Saved for Lent';
+    btn.title = info.downloadLabel;
     btn.removeAttribute('disabled');
-    setTimeout(() => { btn.textContent = '📥 Download for Lent'; }, 5000);
   });
 
-  // Voice commands (passive listener)
+  // Voice commands (passive)
   (() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
@@ -496,23 +451,21 @@ import KaraokeText from '../components/KaraokeText.astro';
     r.continuous = true; r.lang = 'en-US';
     r.onresult = (ev: any) => {
       const cmd = ev.results[ev.results.length-1][0].transcript.toLowerCase();
-      if (cmd.includes('day mode') || cmd.includes('switch to day')) applyTheme('day');
-      if (cmd.includes('night mode') || cmd.includes('switch to night')) applyTheme('night');
+      if (cmd.includes('day mode')) applyTheme('day');
+      if (cmd.includes('night mode')) applyTheme('night');
       if (cmd.includes('pause') && !cmd.includes('un')) { engine?.pause(); isRunning = false; audioManager.pause(); }
-      if (cmd.includes('resume') || cmd.includes('continue') || cmd.includes('unpause')) {
-        engine?.resume(); isRunning = true; audioManager.resume(); playNextStep();
-      }
+      if (cmd.includes('resume') || cmd.includes('continue')) { engine?.resume(); isRunning = true; audioManager.resume(); playNextStep(); }
     };
     try { r.start(); } catch {}
   })();
 
-  // Resume AudioContext on first gesture
   document.addEventListener('click', () => {
     try { (audioManager as any)['audioCtx']?.resume?.(); } catch {}
   }, { once: true });
 
   // ── Boot ────────────────────────────────────────────────────
   async function init() {
+    initSeasonalFooter();
     const prefs = await loadPreferences();
     applyTheme(prefs?.theme || detectAutoTheme());
     applyMysteryTheme(getMysteryForDate().toString());
@@ -521,8 +474,8 @@ import KaraokeText from '../components/KaraokeText.astro';
     if (banner) banner.textContent = MYSTERY_SETS[getMysteryForDate()]?.name ?? '';
 
     if (prefs?.language) {
-      currentLanguage = prefs.language;
-      currentVoiceDesc = prefs.voiceDescription || currentVoiceDesc;
+      currentLanguage    = prefs.language;
+      currentVoiceDesc   = prefs.voiceDescription || currentVoiceDesc;
 
       const resume = el('resume-banner');
       if (resume) {
@@ -550,226 +503,208 @@ import KaraokeText from '../components/KaraokeText.astro';
 </script>
 
 <style>
+  /* ── Full-screen app shell ──────────────────────────────── */
   .rosary-app {
-    position: relative;
-    z-index: 1;
-    min-height: 100svh;
+    position: fixed;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    overflow: hidden;
+    background: var(--bg);
+    /* Safe area for notch/home bar */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
-  /* Header */
+  /* ── Header ─────────────────────────────────────────────── */
   .app-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(8px);
+    padding: 0.4rem 0.8rem;
+    border-bottom: 1px solid var(--border-dim);
     background: var(--bg-glass);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    gap: 0.75rem;
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+    gap: 0.5rem;
+    z-index: 5;
+    min-height: 42px;
   }
 
-  .header-cross {
-    font-size: 1.3rem;
+  .hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .hdr-cross {
+    font-size: 1.05rem;
     color: var(--gold-dim);
-    text-shadow: 0 0 12px var(--gold-glow);
+    text-shadow: 0 0 10px var(--gold-glow);
     flex-shrink: 0;
   }
 
-  .header-center {
-    flex: 1;
-    text-align: center;
-  }
-
-  .site-title {
+  .hdr-title {
     font-family: 'Cinzel', serif;
-    font-size: clamp(1.2rem, 4vw, 1.8rem);
+    font-size: clamp(1rem, 3vw, 1.4rem);
     font-weight: 700;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.14em;
     color: var(--gold-light);
-    text-shadow: 0 0 20px var(--gold-glow);
-    line-height: 1;
+    text-shadow: 0 0 16px var(--gold-glow);
+    flex-shrink: 0;
   }
 
-  .mystery-banner {
+  .hdr-mystery {
     font-family: 'Cormorant Garamond', serif;
     font-style: italic;
-    font-size: clamp(0.75rem, 2.5vw, 0.9rem);
+    font-size: clamp(0.68rem, 2vw, 0.85rem);
     color: var(--text-muted);
-    letter-spacing: 0.06em;
-    margin-top: 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .header-controls {
+  .hdr-right {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.3rem;
     flex-shrink: 0;
   }
 
-  .ctrl-btn {
-    padding: 0.35rem 0.7rem;
+  .hdr-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
     background: transparent;
     border: 1px solid var(--border-dim);
     color: var(--text-dim);
-    border-radius: 20px;
-    font-size: 0.8rem;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  .ctrl-btn:hover {
-    border-color: var(--gold-dim);
-    color: var(--gold-light);
-    background: rgba(201,168,76,0.07);
-  }
-
-  /* Progress */
-  .progress-container {
+    font-size: 1rem;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.4rem 1.25rem;
-    border-bottom: 1px solid var(--border-dim);
+    justify-content: center;
+    transition: all 0.2s;
   }
 
-  .progress-bar {
-    flex: 1;
+  .hdr-btn:hover {
+    border-color: var(--gold-dim);
+    background: rgba(201,168,76,0.08);
+  }
+
+  /* ── Progress bar ────────────────────────────────────────── */
+  .progress-bar-wrap {
     height: 2px;
     background: var(--border-dim);
-    border-radius: 1px;
+    flex-shrink: 0;
     overflow: hidden;
   }
 
-  .progress-bar-inner {
+  .progress-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 1px;
+    width: 0%;
     transition: width 0.5s ease;
     box-shadow: 0 0 6px var(--accent-glow);
   }
 
-  .progress-label {
-    font-family: 'Cinzel', serif;
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    white-space: nowrap;
-  }
-
-  /* Main content */
-  .rosary-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
+  /* ── Bead stage: takes all remaining vertical space ──────── */
+  .bead-stage {
     flex: 1;
     min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
   }
 
-  .bead-panel {
+  /* ── Text stage ──────────────────────────────────────────── */
+  .text-stage {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-dim);
+    background: rgba(10, 9, 6, 0.6);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
-    border-right: 1px solid var(--border-dim);
     min-height: 0;
   }
 
-  .prayer-panel {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    overflow: hidden;
-  }
-
-  /* Playback controls */
-  .playback-controls {
+  /* ── Controls bar ────────────────────────────────────────── */
+  .controls-bar {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
     border-top: 1px solid var(--border-dim);
+    background: var(--bg-glass);
+    flex-shrink: 0;
   }
 
-  .ctrl-round {
-    width: 40px; height: 40px;
+  .ctrl-skip {
+    width: 44px; height: 44px;
     border-radius: 50%;
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-dim);
-    font-size: 1rem;
+    font-size: 1.1rem;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.2s;
   }
-
-  .ctrl-round:hover {
-    border-color: var(--gold-dim);
-    color: var(--gold-light);
-    background: rgba(201,168,76,0.07);
-  }
+  .ctrl-skip:hover { border-color: var(--gold-dim); color: var(--gold-light); background: rgba(201,168,76,0.07); }
 
   .ctrl-main {
-    padding: 0.65rem 2rem;
+    padding: 0.6rem 2.2rem;
     background: linear-gradient(135deg, var(--accent), var(--accent));
     color: #fff;
-    border-radius: 24px;
+    border-radius: 28px;
     font-family: 'Cinzel', serif;
-    font-size: 0.9rem;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
     font-weight: 600;
     letter-spacing: 0.08em;
-    box-shadow: 0 4px 16px var(--accent-glow);
+    box-shadow: 0 4px 18px var(--accent-glow);
     transition: all 0.25s;
     border: 1px solid rgba(255,255,255,0.15);
+    min-width: 120px;
   }
+  .ctrl-main:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); filter: brightness(1.1); }
+  .ctrl-main:active { transform: translateY(0); }
 
-  .ctrl-main:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 24px var(--accent-glow);
-    filter: brightness(1.1);
-  }
-
-  .ctrl-main:active {
-    transform: translateY(0);
-  }
-
-  /* Bottom actions */
-  .bottom-actions {
-    display: flex;
-    justify-content: center;
-    padding: 0.5rem 1rem 0.75rem;
-    border-top: 1px solid var(--border-dim);
-  }
-
-  .action-btn {
-    padding: 0.4rem 1rem;
+  .ctrl-dl {
+    width: 44px; height: 44px;
+    border-radius: 50%;
     background: transparent;
     border: 1px solid var(--border-dim);
     color: var(--text-muted);
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
     transition: all 0.2s;
   }
+  .ctrl-dl:hover { border-color: var(--border); color: var(--text-dim); }
+  .ctrl-dl:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .action-btn:hover {
-    border-color: var(--border);
-    color: var(--text-dim);
+  /* ── Footer ──────────────────────────────────────────────── */
+  .app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.3rem 1rem;
+    border-top: 1px solid var(--border-dim);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.68rem, 2vw, 0.82rem);
+    color: var(--text-muted);
+    flex-shrink: 0;
+    background: var(--bg);
+    opacity: 0.75;
   }
 
-  .action-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
+  .ftr-cross { color: var(--gold-dim); }
+  .ftr-tagline { letter-spacing: 0.04em; }
+  .ftr-brand { font-size: 0.75em; opacity: 0.6; letter-spacing: 0.06em; }
 
-  /* Finished message */
-  .finished-message {
+  /* ── Finished overlay ────────────────────────────────────── */
+  .finished-overlay {
     position: fixed;
     inset: 0;
     z-index: 50;
@@ -783,61 +718,7 @@ import KaraokeText from '../components/KaraokeText.astro';
     animation: fadeIn 1.5s ease;
   }
 
-  .finished-cross {
-    font-size: 3rem;
-    color: var(--gold);
-    text-shadow: 0 0 30px var(--gold-glow);
-    animation: fadeInUp 1s ease;
-  }
-
-  .finished-text {
-    font-family: 'Cinzel', serif;
-    font-size: clamp(1.2rem, 4vw, 1.8rem);
-    color: var(--gold-light);
-    text-shadow: 0 0 20px var(--gold-glow);
-    letter-spacing: 0.1em;
-    animation: fadeInUp 1s 0.3s ease both;
-  }
-
-  .finished-sub {
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    font-size: clamp(0.9rem, 3vw, 1.1rem);
-    color: var(--text-dim);
-    animation: fadeInUp 1s 0.6s ease both;
-  }
-
-  /* Footer */
-  .app-footer {
-    text-align: center;
-    padding: 0.75rem 1rem;
-    border-top: 1px solid var(--border-dim);
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    line-height: 1.8;
-  }
-
-  .footer-cross { color: var(--gold-dim); margin: 0 0.3rem; }
-  .footer-sub { font-size: 0.7rem; color: var(--text-muted); opacity: 0.7; }
-
-  /* ── Responsive / Mobile ───────────────────────────────── */
-  @media (max-width: 640px) {
-    .rosary-content {
-      grid-template-columns: 1fr;
-    }
-
-    .bead-panel {
-      border-right: none;
-      border-bottom: 1px solid var(--border-dim);
-      padding: 0.5rem;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .header-controls .ctrl-btn:last-child {
-      display: none;
-    }
-  }
+  .fin-cross { font-size: clamp(2rem, 8vw, 3.5rem); color: var(--gold); text-shadow: 0 0 30px var(--gold-glow); animation: fadeInUp 1s ease; }
+  .fin-text  { font-family: 'Cinzel', serif; font-size: clamp(1.1rem, 4vw, 1.8rem); color: var(--gold-light); text-shadow: 0 0 20px var(--gold-glow); letter-spacing: 0.1em; animation: fadeInUp 1s 0.3s ease both; }
+  .fin-sub   { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: clamp(0.9rem, 3vw, 1.1rem); color: var(--text-dim); animation: fadeInUp 1s 0.6s ease both; }
 </style>

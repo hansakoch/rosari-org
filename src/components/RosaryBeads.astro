@@ -1,102 +1,101 @@
 ---
-// RosaryBeads.astro — SVG rosary bead visualization
-// Positions are pre-calculated for a clean oval layout
+// RosaryBeads.astro — Full-screen animated rosary bead visualization
 ---
 
-<div class="rosary-container" role="img" aria-label="Rosary bead visualization">
+<div class="rosary-wrap" id="rosary-wrap" role="img" aria-label="Rosary bead visualization">
   <svg
     id="rosary-svg"
-    viewBox="0 0 480 400"
+    viewBox="0 0 600 540"
     xmlns="http://www.w3.org/2000/svg"
     aria-hidden="true"
-    class="rosary-svg"
+    preserveAspectRatio="xMidYMid meet"
   >
-    <!-- Gradient definitions -->
     <defs>
-      <radialGradient id="beadGrad-hm" cx="35%" cy="30%">
-        <stop offset="0%" stop-color="#8a6a2a" />
-        <stop offset="100%" stop-color="#2a1a00" />
+      <!-- Bead gradients -->
+      <radialGradient id="bg-hm" cx="32%" cy="28%" r="68%">
+        <stop offset="0%" stop-color="#b8954a"/>
+        <stop offset="55%" stop-color="#6a4518"/>
+        <stop offset="100%" stop-color="#1e0e00"/>
       </radialGradient>
-      <radialGradient id="beadGrad-of" cx="35%" cy="30%">
-        <stop offset="0%" stop-color="#c09030" />
-        <stop offset="100%" stop-color="#3a2000" />
+      <radialGradient id="bg-of" cx="32%" cy="28%" r="68%">
+        <stop offset="0%" stop-color="#e8c060"/>
+        <stop offset="55%" stop-color="#9a6820"/>
+        <stop offset="100%" stop-color="#2e1400"/>
       </radialGradient>
-      <radialGradient id="beadGrad-active" cx="35%" cy="30%">
-        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
-        <stop offset="40%" stop-color="var(--accent2)" />
-        <stop offset="100%" stop-color="var(--accent)" />
+      <radialGradient id="bg-active" cx="28%" cy="24%" r="72%">
+        <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
+        <stop offset="30%" stop-color="var(--accent2)"/>
+        <stop offset="100%" stop-color="var(--accent)"/>
       </radialGradient>
-      <filter id="bead-glow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="3" result="blur"/>
+      <radialGradient id="bg-prayed" cx="32%" cy="28%" r="68%">
+        <stop offset="0%" stop-color="#5a4020"/>
+        <stop offset="100%" stop-color="#0e0600"/>
+      </radialGradient>
+
+      <!-- Chain line style -->
+      <marker id="chain-end" markerWidth="4" markerHeight="4" refX="2" refY="2">
+        <circle cx="2" cy="2" r="1.5" fill="var(--gold-dim)" opacity="0.5"/>
+      </marker>
+
+      <!-- Glow filter - normal -->
+      <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="4" result="blur"/>
         <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
-      <filter id="bead-glow-strong" x="-80%" y="-80%" width="260%" height="260%">
-        <feGaussianBlur stdDeviation="5" result="blur"/>
-        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+
+      <!-- Strong glow for active bead -->
+      <filter id="glow-strong" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="7" result="blur1"/>
+        <feGaussianBlur stdDeviation="14" result="blur2"/>
+        <feMerge>
+          <feMergeNode in="blur2"/>
+          <feMergeNode in="blur1"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
       </filter>
     </defs>
 
-    <!-- Rosary chain (oval path) -->
+    <!-- Main oval chain -->
     <ellipse
-      cx="240" cy="190"
-      rx="150" ry="125"
+      cx="300" cy="230"
+      rx="228" ry="183"
       fill="none"
       stroke="var(--gold-dim)"
-      stroke-width="1.2"
-      stroke-dasharray="4,3"
-      opacity="0.4"
+      stroke-width="1.5"
+      stroke-dasharray="5,4"
+      opacity="0.35"
     />
 
-    <!-- Tail chain line -->
-    <line x1="240" y1="315" x2="240" y2="390"
-      stroke="var(--gold-dim)" stroke-width="1.2" opacity="0.4" />
+    <!-- Tail chain -->
+    <line x1="300" y1="413" x2="300" y2="525"
+      stroke="var(--gold-dim)" stroke-width="1.5" opacity="0.35"/>
 
-    <!-- Crucifix (bead 0) -->
-    <g id="bead-0" class="rosary-bead bead-crucifix" data-bead-idx="0" transform="translate(240, 400)">
-      <!-- Cross shape -->
-      <rect x="-5" y="-20" width="10" height="36" rx="1" fill="var(--gold-dim)" opacity="0.8"/>
-      <rect x="-12" y="-8" width="24" height="8" rx="1" fill="var(--gold-dim)" opacity="0.8"/>
-      <ellipse cx="0" cy="4" rx="3" ry="4" fill="var(--gold-dim)" opacity="0.7"/>
-      <!-- Circle on top -->
-      <circle cx="0" cy="-22" r="5" fill="url(#beadGrad-hm)" stroke="var(--gold-dim)" stroke-width="0.8"/>
+    <!-- Crucifix (always rendered at tail bottom) -->
+    <g id="bead-crucifix" class="bead-group bead-crucifix" data-bead-idx="0"
+       transform="translate(300,530)">
+      <!-- Cross -->
+      <rect x="-5.5" y="-22" width="11" height="42" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
+      <rect x="-14" y="-8" width="28" height="9" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
+      <!-- INRI -->
+      <text x="0" y="-11" text-anchor="middle" font-family="serif" font-size="5"
+        fill="#0a0600" opacity="0.7" letter-spacing="0.5">INRI</text>
+      <!-- Corpus (simplified) -->
+      <ellipse cx="0" cy="3" rx="4" ry="6" fill="var(--gold)" opacity="0.6"/>
+      <!-- Top connector bead -->
+      <circle cx="0" cy="-24" r="7" fill="url(#bg-hm)" stroke="var(--gold-dim)" stroke-width="1"/>
     </g>
 
-    <!-- Tail beads: bead 1 (OF) and beads 2-4 (HM) and bead 5 (connector) -->
-    <!-- These are positioned along the tail below the oval bottom -->
-    <!-- idx 1: OF at y=378 -->
-    <circle id="bead-1" class="rosary-bead bead-of" data-bead-idx="1"
-      cx="240" cy="378" r="8"
-      fill="url(#beadGrad-of)" stroke="var(--gold-dim)" stroke-width="0.8" />
-
-    <!-- idx 2-4: HM beads -->
-    <circle id="bead-2" class="rosary-bead bead-hm" data-bead-idx="2"
-      cx="240" cy="358" r="6"
-      fill="url(#beadGrad-hm)" stroke="#4a3010" stroke-width="0.7" />
-    <circle id="bead-3" class="rosary-bead bead-hm" data-bead-idx="3"
-      cx="240" cy="342" r="6"
-      fill="url(#beadGrad-hm)" stroke="#4a3010" stroke-width="0.7" />
-    <circle id="bead-4" class="rosary-bead bead-hm" data-bead-idx="4"
-      cx="240" cy="326" r="6"
-      fill="url(#beadGrad-hm)" stroke="#4a3010" stroke-width="0.7" />
-
-    <!-- idx 5: Connector bead at loop bottom -->
-    <circle id="bead-5" class="rosary-bead bead-connector" data-bead-idx="5"
-      cx="240" cy="315" r="7"
-      fill="url(#beadGrad-of)" stroke="var(--gold-dim)" stroke-width="0.8" />
-
-    <!-- Decade beads: dynamically generated via JS -->
-    <!-- Decade 1: beads 6-16 (OF + 10 HM) -->
-    <!-- Decade 2: beads 17-27 -->
-    <!-- ... up to Decade 5: beads 51-61 -->
-    <!-- JS will populate these -->
+    <!-- Bead groups (filled by JS) -->
+    <g id="tail-beads"></g>
     <g id="loop-beads"></g>
-
   </svg>
 
-  <!-- Decade progress dots (mobile-friendly indicator) -->
-  <div class="decade-dots" aria-label="Decade progress">
-    {[0,1,2,3,4].map(d => (
-      <div class="decade-dot" data-decade={d} aria-label={`Decade ${d+1}`}></div>
+  <!-- Decade indicator: 5 glowing dots at bottom -->
+  <div class="decade-track" aria-label="Decade progress">
+    {[1,2,3,4,5].map(d => (
+      <div class="dec-dot" data-decade={d-1} aria-label={`Decade ${d}`}>
+        <span class="dec-num">{d}</span>
+      </div>
     ))}
   </div>
 </div>
@@ -104,128 +103,202 @@
 <script>
   import { getBeadPositions } from '../scripts/rosary-data.ts';
 
-  function initBeads() {
-    const svg = document.getElementById('rosary-svg');
-    const loopGroup = document.getElementById('loop-beads');
-    if (!svg || !loopGroup) return;
+  const CX = 300, CY = 230, RX = 228, RY = 183;
+  const positions = getBeadPositions(CX, CY, RX, RY);
 
-    const positions = getBeadPositions(240, 190, 150, 125);
-    // Positions 0-5 are already rendered as static SVG (crucifix + tail)
-    // Positions 6+ are loop beads
+  function makeBead(
+    idx: number,
+    x: number, y: number,
+    r: number,
+    type: string,
+    container: SVGGElement
+  ): void {
+    const isCrucifix = type === 'crucifix';
+    if (isCrucifix) return; // rendered statically
 
+    const isOf = type === 'of' || type === 'connector';
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', `bead-group bead-${type}`);
+    g.setAttribute('data-bead-idx', String(idx));
+    g.setAttribute('data-bead-x', String(x));
+    g.setAttribute('data-bead-y', String(y));
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', String(x));
+    circle.setAttribute('cy', String(y));
+    circle.setAttribute('r', String(r));
+    circle.setAttribute('fill', isOf ? 'url(#bg-of)' : 'url(#bg-hm)');
+    circle.setAttribute('stroke', isOf ? 'var(--gold-dim)' : '#3a2508');
+    circle.setAttribute('stroke-width', isOf ? '1.2' : '0.8');
+    circle.setAttribute('class', 'rosary-bead');
+
+    // Specular highlight
+    const shine = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    const sr = r * 0.38;
+    shine.setAttribute('cx', String(x - r * 0.22));
+    shine.setAttribute('cy', String(y - r * 0.26));
+    shine.setAttribute('rx', String(sr));
+    shine.setAttribute('ry', String(sr * 0.6));
+    shine.setAttribute('fill', 'rgba(255,255,255,0.18)');
+    shine.setAttribute('class', 'bead-shine');
+
+    g.appendChild(circle);
+    g.appendChild(shine);
+    container.appendChild(g);
+  }
+
+  function initBeads(): void {
+    const tailGroup = document.getElementById('tail-beads') as SVGGElement | null;
+    const loopGroup = document.getElementById('loop-beads') as SVGGElement | null;
+    if (!tailGroup || !loopGroup) return;
+
+    tailGroup.innerHTML = '';
     loopGroup.innerHTML = '';
 
-    for (let i = 6; i < positions.length; i++) {
+    for (let i = 1; i < positions.length; i++) {
       const pos = positions[i]!;
-      const isOf = pos.type === 'of';
-      const r = isOf ? 8 : 5.5;
-
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.id = `bead-${i}`;
-      circle.setAttribute('class', `rosary-bead bead-${pos.type}`);
-      circle.setAttribute('data-bead-idx', String(i));
-      circle.setAttribute('cx', String(Math.round(pos.x * 10) / 10));
-      circle.setAttribute('cy', String(Math.round(pos.y * 10) / 10));
-      circle.setAttribute('r', String(r));
-      circle.setAttribute('fill', isOf ? 'url(#beadGrad-of)' : 'url(#beadGrad-hm)');
-      circle.setAttribute('stroke', isOf ? 'var(--gold-dim)' : '#3a2a08');
-      circle.setAttribute('stroke-width', isOf ? '0.9' : '0.6');
-
-      loopGroup.appendChild(circle);
+      const container = i < 6 ? tailGroup : loopGroup;
+      makeBead(i, pos.x, pos.y, pos.size, pos.type, container);
     }
   }
 
-  // Update decade dots based on active bead
-  function updateDecadeDots(beadIndex: number) {
-    if (beadIndex < 6) return;
-    const decadeIdx = Math.floor((beadIndex - 6) / 11);
-    document.querySelectorAll('.decade-dot').forEach((dot, i) => {
-      dot.classList.toggle('active', i === decadeIdx);
-      dot.classList.toggle('done', i < decadeIdx);
+  // ── Update bead states (called from app.ts via global) ───────
+
+  function updateBeads(activeBeadIndex: number): void {
+    // Decade dots
+    if (activeBeadIndex >= 6) {
+      const decadeIdx = Math.floor((activeBeadIndex - 6) / 11);
+      document.querySelectorAll('.dec-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === decadeIdx);
+        dot.classList.toggle('done', i < decadeIdx);
+      });
+    }
+
+    // Crucifix
+    const crucifixGroup = document.getElementById('bead-crucifix');
+    crucifixGroup?.classList.toggle('is-active', activeBeadIndex === 0);
+
+    // All bead groups
+    document.querySelectorAll<SVGGElement>('.bead-group').forEach(grp => {
+      const idx = parseInt(grp.dataset['beadIdx'] ?? '-1');
+      const bead = grp.querySelector('.rosary-bead') as SVGCircleElement | null;
+      if (!bead) return;
+
+      const isActive = idx === activeBeadIndex && activeBeadIndex >= 0;
+      const isPrayed = activeBeadIndex >= 0 && idx >= 0 && idx < activeBeadIndex;
+
+      grp.classList.toggle('is-active', isActive);
+      grp.classList.toggle('is-prayed', isPrayed && !isActive);
+      grp.classList.toggle('is-upcoming', !isActive && !isPrayed && idx >= 0);
+
+      if (isActive) {
+        bead.setAttribute('fill', 'url(#bg-active)');
+        bead.setAttribute('filter', 'url(#glow-strong)');
+      } else if (isPrayed) {
+        bead.setAttribute('fill', 'url(#bg-prayed)');
+        bead.removeAttribute('filter');
+      } else {
+        const isOf = grp.classList.contains('bead-of') || grp.classList.contains('bead-connector');
+        bead.setAttribute('fill', isOf ? 'url(#bg-of)' : 'url(#bg-hm)');
+        bead.removeAttribute('filter');
+      }
     });
   }
 
-  // Expose update function globally for app.ts
-  (window as any).updateDecadeDots = updateDecadeDots;
+  // Expose globally for app.ts
+  (window as any).updateBeads = updateBeads;
 
   initBeads();
 </script>
 
 <style>
-  .rosary-container {
+  .rosary-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem;
+    justify-content: center;
+    overflow: hidden;
   }
 
-  .rosary-svg {
+  #rosary-svg {
     width: 100%;
-    max-width: 420px;
-    height: auto;
-    max-height: 50svh;
-    filter: drop-shadow(0 0 30px rgba(0,0,0,0.8));
+    height: 100%;
+    max-height: 100%;
+    flex: 1;
+    min-height: 0;
+    filter: drop-shadow(0 0 40px rgba(0,0,0,0.9));
   }
 
-  /* Bead states */
-  .rosary-bead {
-    transition: filter 0.3s ease, transform 0.3s ease, opacity 0.3s;
-    transform-origin: center;
-    transform-box: fill-box;
+  /* Bead group states */
+  .bead-group {
+    transition: opacity 0.4s ease;
     cursor: pointer;
   }
 
-  .rosary-bead.prayed {
-    opacity: 0.55;
+  .bead-group.is-prayed { opacity: 0.45; }
+  .bead-group.is-upcoming { opacity: 1; }
+
+  .bead-group.is-active {
+    opacity: 1;
+    animation: beadBounce 1.6s ease-in-out infinite;
   }
 
-  .rosary-bead.active {
-    animation: beadPulse 1.8s ease-in-out infinite;
-    filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 12px var(--accent));
+  /* Crucifix active state */
+  .bead-crucifix.is-active {
+    filter: drop-shadow(0 0 12px var(--gold)) drop-shadow(0 0 28px var(--gold-glow));
+    animation: beadBounce 2s ease-in-out infinite;
   }
 
-  .rosary-bead.active circle,
-  circle.rosary-bead.active {
-    fill: url(#beadGrad-active) !important;
+  @keyframes beadBounce {
+    0%, 100% { transform: scale(1.0) translateY(0); }
+    50%       { transform: scale(1.14) translateY(-3px); }
   }
 
-  .bead-crucifix.active {
-    filter: drop-shadow(0 0 8px gold) drop-shadow(0 0 20px var(--gold-glow));
-    animation: beadPulse 2s ease-in-out infinite;
-  }
-
-  /* Decade dots */
-  .decade-dots {
+  /* Decade track */
+  .decade-track {
     display: flex;
-    gap: 0.6rem;
-    padding: 0.4rem;
+    gap: clamp(0.6rem, 3vw, 1.4rem);
+    padding: 0.5rem 0.5rem 0.3rem;
+    flex-shrink: 0;
   }
 
-  .decade-dot {
-    width: 10px; height: 10px;
+  .dec-dot {
+    width: clamp(22px, 4vw, 32px);
+    height: clamp(22px, 4vw, 32px);
     border-radius: 50%;
     border: 1.5px solid var(--gold-dim);
     background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: all 0.4s ease;
+    position: relative;
   }
 
-  .decade-dot.active {
+  .dec-num {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.6rem, 1.8vw, 0.8rem);
+    color: var(--text-muted);
+    transition: color 0.3s;
+    user-select: none;
+  }
+
+  .dec-dot.active {
     background: var(--accent);
     border-color: var(--accent2);
-    box-shadow: 0 0 8px var(--accent-glow);
+    box-shadow: 0 0 12px var(--accent-glow), 0 0 20px var(--accent-glow);
+    transform: scale(1.15);
   }
+  .dec-dot.active .dec-num { color: #fff; }
 
-  .decade-dot.done {
+  .dec-dot.done {
     background: var(--gold-dim);
     border-color: transparent;
-    opacity: 0.5;
+    opacity: 0.55;
   }
-
-  /* Mobile adjustments */
-  @media (max-width: 480px) {
-    .rosary-svg {
-      max-height: 42svh;
-    }
-  }
+  .dec-dot.done .dec-num { color: var(--bg); }
 </style>

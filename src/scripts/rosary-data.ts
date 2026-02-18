@@ -1,8 +1,9 @@
 // ============================================================
-// rosary-data.ts — All prayers, mysteries, and structure data
+// rosary-data.ts — All prayers, mysteries, structure, and locale data
 // ============================================================
 
 export type MysteryType = 'joyful' | 'sorrowful' | 'glorious' | 'luminous';
+export type LiturgicalSeason = 'advent' | 'christmas' | 'lent' | 'easter' | 'ordinary';
 
 export interface Prayer {
   title: string;
@@ -31,7 +32,7 @@ export interface RosaryStep {
   beadIndex?: number;
 }
 
-// ── Prayers ────────────────────────────────────────────────
+// ── English Prayers ─────────────────────────────────────────
 
 export const PRAYERS: Record<string, Prayer> = {
   signOfCross: {
@@ -80,6 +81,66 @@ export const PRAYERS: Record<string, Prayer> = {
     words: ['Go', 'in', 'peace.'],
   },
 };
+
+// ── Latin Prayers ───────────────────────────────────────────
+// Traditional ecclesiastical Latin (Tridentine / Novus Ordo Latin)
+
+export const PRAYERS_LATIN: Record<string, Prayer> = {
+  signOfCross: {
+    title: 'Signum Crucis',
+    text: 'In nomine Patris, et Filii, et Spiritus Sancti. Amen.',
+    words: 'In nomine Patris, et Filii, et Spiritus Sancti. Amen.'.split(' '),
+  },
+  apostlesCreed: {
+    title: 'Symbolum Apostolorum',
+    text: 'Credo in Deum Patrem omnipotentem, Creatorem caeli et terrae, et in Iesum Christum, Filium eius unicum, Dominum nostrum, qui conceptus est de Spiritu Sancto, natus ex Maria Virgine, passus sub Pontio Pilato, crucifixus, mortuus, et sepultus; descendit ad inferos; tertia die resurrexit a mortuis; ascendit ad caelos; sedet ad dexteram Dei Patris omnipotentis; inde venturus est iudicare vivos et mortuos. Credo in Spiritum Sanctum, sanctam Ecclesiam catholicam, Sanctorum communionem, remissionem peccatorum, carnis resurrectionem, vitam aeternam. Amen.',
+    words: 'Credo in Deum Patrem omnipotentem, Creatorem caeli et terrae, et in Iesum Christum, Filium eius unicum, Dominum nostrum, qui conceptus est de Spiritu Sancto, natus ex Maria Virgine, passus sub Pontio Pilato, crucifixus, mortuus, et sepultus; descendit ad inferos; tertia die resurrexit a mortuis; ascendit ad caelos; sedet ad dexteram Dei Patris omnipotentis; inde venturus est iudicare vivos et mortuos. Credo in Spiritum Sanctum, sanctam Ecclesiam catholicam, Sanctorum communionem, remissionem peccatorum, carnis resurrectionem, vitam aeternam. Amen.'.split(' '),
+  },
+  ourFather: {
+    title: 'Pater Noster',
+    text: 'Pater noster, qui es in caelis, sanctificetur nomen tuum. Adveniat regnum tuum. Fiat voluntas tua, sicut in caelo et in terra. Panem nostrum quotidianum da nobis hodie, et dimitte nobis debita nostra sicut et nos dimittimus debitoribus nostris. Et ne nos inducas in tentationem, sed libera nos a malo. Amen.',
+    words: 'Pater noster, qui es in caelis, sanctificetur nomen tuum. Adveniat regnum tuum. Fiat voluntas tua, sicut in caelo et in terra. Panem nostrum quotidianum da nobis hodie, et dimitte nobis debita nostra sicut et nos dimittimus debitoribus nostris. Et ne nos inducas in tentationem, sed libera nos a malo. Amen.'.split(' '),
+  },
+  hailMary: {
+    title: 'Ave Maria',
+    text: 'Ave Maria, gratia plena, Dominus tecum. Benedicta tu in mulieribus, et benedictus fructus ventris tui, Iesus. Sancta Maria, Mater Dei, ora pro nobis peccatoribus, nunc et in hora mortis nostrae. Amen.',
+    words: 'Ave Maria, gratia plena, Dominus tecum. Benedicta tu in mulieribus, et benedictus fructus ventris tui, Iesus. Sancta Maria, Mater Dei, ora pro nobis peccatoribus, nunc et in hora mortis nostrae. Amen.'.split(' '),
+  },
+  gloryBe: {
+    title: 'Gloria Patri',
+    text: 'Gloria Patri, et Filio, et Spiritui Sancto. Sicut erat in principio, et nunc et semper, et in saecula saeculorum. Amen.',
+    words: 'Gloria Patri, et Filio, et Spiritui Sancto. Sicut erat in principio, et nunc et semper, et in saecula saeculorum. Amen.'.split(' '),
+  },
+  fatimaPrayer: {
+    title: 'Oratio Fatimae',
+    text: 'Domine Iesu, dimitte nobis debita nostra, libera nos ab igne inferni, adduc in caelum omnes animas, praesertim illas quae maxime indigent misericordia tua.',
+    words: 'Domine Iesu, dimitte nobis debita nostra, libera nos ab igne inferni, adduc in caelum omnes animas, praesertim illas quae maxime indigent misericordia tua.'.split(' '),
+  },
+  hailHolyQueen: {
+    title: 'Salve Regina',
+    text: 'Salve, Regina, Mater misericordiae, vita, dulcedo, et spes nostra, salve. Ad te clamamus exsules filii Hevae. Ad te suspiramus gementes et flentes in hac lacrimarum valle. Eia ergo, Advocata nostra, illos tuos misericordes oculos ad nos converte. Et Iesum, benedictum fructum ventris tui, nobis post hoc exsilium ostende. O clemens, O pia, O dulcis Virgo Maria! Ora pro nobis, sancta Dei Genitrix, ut digni efficiamur promissionibus Christi.',
+    words: 'Salve, Regina, Mater misericordiae, vita, dulcedo, et spes nostra, salve. Ad te clamamus exsules filii Hevae. Ad te suspiramus gementes et flentes in hac lacrimarum valle. Eia ergo, Advocata nostra, illos tuos misericordes oculos ad nos converte. Et Iesum, benedictum fructum ventris tui, nobis post hoc exsilium ostende. O clemens, O pia, O dulcis Virgo Maria! Ora pro nobis, sancta Dei Genitrix, ut digni efficiamur promissionibus Christi.'.split(' '),
+  },
+  closingPrayer: {
+    title: 'Oratio Finalis',
+    text: 'Deus, cuius Unigenitus per vitam, mortem et resurrectionem suam nobis salutis aeternae praemia comparavit: concede, quaesumus; ut haec mysteria sacratissimo beatae Mariae Virginis Rosario recolentes, et imitemur quod continent, et quod promittunt assequamur. Per Christum Dominum nostrum. Amen.',
+    words: 'Deus, cuius Unigenitus per vitam, mortem et resurrectionem suam nobis salutis aeternae praemia comparavit: concede, quaesumus; ut haec mysteria sacratissimo beatae Mariae Virginis Rosario recolentes, et imitemur quod continent, et quod promittunt assequamur. Per Christum Dominum nostrum. Amen.'.split(' '),
+  },
+  goInPeace: {
+    title: '',
+    text: 'Ite in pace.',
+    words: ['Ite', 'in', 'pace.'],
+  },
+};
+
+// ── Language-aware prayer lookup ────────────────────────────
+
+export function getPrayerForLanguage(prayerKey: string, language: string): Prayer {
+  const lang = language.toLowerCase().trim();
+  const isLatin = lang === 'latin' || lang === 'ecclesiastical latin' || lang === 'latin church';
+  const map = isLatin ? PRAYERS_LATIN : PRAYERS;
+  return map[prayerKey] ?? PRAYERS[prayerKey] ?? { title: '', text: '', words: [] };
+}
 
 // ── Mysteries ──────────────────────────────────────────────
 
@@ -144,24 +205,101 @@ export function getMysteryForDate(date: Date = new Date()): MysteryType {
   return 'luminous';                                 // Thu
 }
 
+// ── Liturgical Season Calculator ────────────────────────────
+// Accurate for Western Roman Rite; never needs manual updating.
+
+function computeEaster(year: number): Date {
+  // Anonymous Gregorian algorithm
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31); // 1-indexed
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function computeAdventStart(year: number): Date {
+  // 4th Sunday before Christmas (= 3 Sundays before nearest Sunday to Christmas)
+  const xmasDay = new Date(Date.UTC(year, 11, 25)).getUTCDay();
+  // Days back to reach the Sunday on or before Dec 25
+  const toSunday = xmasDay === 0 ? 0 : xmasDay;
+  // Advent = 3 weeks (21 days) before that Sunday
+  return new Date(Date.UTC(year, 11, 25 - toSunday - 21));
+}
+
+function computeEpiphany(year: number): Date {
+  // In most dioceses Epiphany is Jan 6; Season of Christmas ends with
+  // Baptism of the Lord (Sunday after Epiphany, or Jan 13 at latest)
+  const jan6Day = new Date(Date.UTC(year, 0, 6)).getUTCDay();
+  const daysToNextSunday = jan6Day === 0 ? 7 : 7 - jan6Day;
+  const epiphany = new Date(Date.UTC(year, 0, 6 + daysToNextSunday)); // Sunday after Jan 6
+  const baptism = new Date(epiphany);
+  baptism.setUTCDate(baptism.getUTCDate() + 7); // Baptism of Lord = Sunday after Epiphany
+  return baptism;
+}
+
+export interface LiturgicalSeasonInfo {
+  season: LiturgicalSeason;
+  name: string;
+  tagline: string;
+  downloadLabel: string; // e.g. "Download for Lent"
+}
+
+export function getLiturgicalSeason(date: Date = new Date()): LiturgicalSeasonInfo {
+  // Normalise to UTC date-only for comparison
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const year = d.getUTCFullYear();
+
+  const easter      = computeEaster(year);
+  const ashWed      = new Date(easter); ashWed.setUTCDate(easter.getUTCDate() - 46);
+  const pentecost   = new Date(easter); pentecost.setUTCDate(easter.getUTCDate() + 49);
+  const advent      = computeAdventStart(year);
+  const prevAdvent  = computeAdventStart(year - 1);
+  const baptismEnd  = computeEpiphany(year);        // end of Christmas (current Jan)
+  const christmasStart = new Date(Date.UTC(year - 1, 11, 25)); // Dec 25 of prev year
+
+  // Check each season in chronological order
+  if (d >= advent) {
+    return { season: 'advent', name: 'Advent', tagline: 'Maranatha — Come, Lord Jesus', downloadLabel: 'Download for Advent' };
+  }
+  // Christmas: Dec 25 → Baptism of the Lord (~Jan 12)
+  if ((d >= new Date(Date.UTC(year, 11, 25))) || d <= baptismEnd) {
+    return { season: 'christmas', name: 'Christmas', tagline: 'Gloria in Excelsis Deo', downloadLabel: 'Download for Christmas' };
+  }
+  // Lent: Ash Wednesday → Holy Saturday
+  if (d >= ashWed && d < easter) {
+    return { season: 'lent', name: 'Lent', tagline: 'Memento homo, quia pulvis es', downloadLabel: 'Download for Lent' };
+  }
+  // Easter: Easter Sunday → Pentecost
+  if (d >= easter && d <= pentecost) {
+    return { season: 'easter', name: 'Easter', tagline: 'Alleluia — Christ is risen', downloadLabel: 'Download for Easter' };
+  }
+  // Everything else: Ordinary Time
+  return { season: 'ordinary', name: 'Ordinary Time', tagline: 'Ave Maria, gratia plena', downloadLabel: 'Download for offline use' };
+}
+
 // ── Rosary Sequence Builder ─────────────────────────────────
-// Returns the full ordered sequence of steps for a complete rosary
 
 export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
   const steps: RosaryStep[] = [];
 
-  // Intro
   steps.push({ prayer: 'signOfCross', beadIndex: -1 });
-  steps.push({ prayer: 'apostlesCreed', beadIndex: 0 });  // Crucifix bead
-
-  // Tail beads
-  steps.push({ prayer: 'ourFather', beadIndex: 1 });       // OF on tail
+  steps.push({ prayer: 'apostlesCreed', beadIndex: 0 });
+  steps.push({ prayer: 'ourFather', beadIndex: 1 });
   steps.push({ prayer: 'hailMary', hailMaryIndex: 0, beadIndex: 2 });
   steps.push({ prayer: 'hailMary', hailMaryIndex: 1, beadIndex: 3 });
   steps.push({ prayer: 'hailMary', hailMaryIndex: 2, beadIndex: 4 });
-  steps.push({ prayer: 'gloryBe', beadIndex: 5 });         // Connector/Glory Be
+  steps.push({ prayer: 'gloryBe', beadIndex: 5 });
 
-  // 5 Decades
   for (let d = 0; d < 5; d++) {
     steps.push({ prayer: 'mysteryAnnounce', decadeIndex: d, mysteryIndex: d });
     steps.push({ prayer: 'ourFather', decadeIndex: d, beadIndex: 6 + d * 11 });
@@ -172,7 +310,6 @@ export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
     steps.push({ prayer: 'fatimaPrayer', decadeIndex: d, beadIndex: 6 + d * 11 + 10 });
   }
 
-  // Closing
   steps.push({ prayer: 'hailHolyQueen', beadIndex: -1 });
   steps.push({ prayer: 'closingPrayer', beadIndex: -1 });
   steps.push({ prayer: 'signOfCross', beadIndex: -1 });
@@ -182,37 +319,24 @@ export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
 }
 
 // ── Bead Layout Data ────────────────────────────────────────
-// Returns SVG [x, y] positions for 61 rosary positions:
-// 0=Crucifix, 1=OF-tail, 2-4=HM-tail, 5=connector, 6-60=loop (5 decades)
 
-export function getBeadPositions(cx = 240, cy = 200, rx = 155, ry = 130): Array<{x: number; y: number; type: string; size: number}> {
+export function getBeadPositions(cx = 300, cy = 240, rx = 230, ry = 185): Array<{x: number; y: number; type: string; size: number}> {
   const positions: Array<{x: number; y: number; type: string; size: number}> = [];
 
-  // Tail: crucifix + 5 beads below circle bottom
   const tailBottom = cy + ry;
-  positions.push({ x: cx, y: tailBottom + 90, type: 'crucifix', size: 14 }); // 0 - crucifix
-  positions.push({ x: cx, y: tailBottom + 62, type: 'of',       size: 11 }); // 1 - OF
-  positions.push({ x: cx, y: tailBottom + 44, type: 'hm',       size: 9  }); // 2 - HM
-  positions.push({ x: cx, y: tailBottom + 29, type: 'hm',       size: 9  }); // 3 - HM
-  positions.push({ x: cx, y: tailBottom + 14, type: 'hm',       size: 9  }); // 4 - HM
-  positions.push({ x: cx, y: tailBottom,       type: 'connector',size: 10 }); // 5 - connector
+  positions.push({ x: cx, y: tailBottom + 108, type: 'crucifix',  size: 18 }); // 0
+  positions.push({ x: cx, y: tailBottom + 76,  type: 'of',        size: 14 }); // 1
+  positions.push({ x: cx, y: tailBottom + 53,  type: 'hm',        size: 11 }); // 2
+  positions.push({ x: cx, y: tailBottom + 33,  type: 'hm',        size: 11 }); // 3
+  positions.push({ x: cx, y: tailBottom + 14,  type: 'hm',        size: 11 }); // 4
+  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5
 
-  // Loop: 55 beads around ellipse
-  // Start at bottom (angle 90° = bottom) going counterclockwise
-  // Bead at idx 0 in loop = just left of connector, going counterclockwise
-  // We need: 5 OF beads + 50 HM beads, spread evenly
-  // Pattern per decade: OF + 10*HM (11 beads), 5 decades = 55 beads
-  // Total arc: 360° - small gap at bottom for tail connection
-  // Gap = 10° at bottom, so beads fill 350°
-
-  const GAP_DEG = 8; // degrees gap at bottom for connector
+  const GAP_DEG = 8;
   const arcTotal = 360 - GAP_DEG;
   const totalLoopBeads = 55;
   const stepDeg = arcTotal / totalLoopBeads;
-  const startDeg = 90 + GAP_DEG / 2; // start angle: just right of bottom
-
-  // Decade pattern: bead 0 of each decade is OF, 1-10 are HM
-  const decadeStarts = [0, 11, 22, 33, 44]; // indices of OF beads in loop
+  const startDeg = 90 + GAP_DEG / 2;
+  const decadeStarts = [0, 11, 22, 33, 44];
 
   for (let i = 0; i < totalLoopBeads; i++) {
     const angleDeg = startDeg + i * stepDeg;
@@ -224,7 +348,7 @@ export function getBeadPositions(cx = 240, cy = 200, rx = 155, ry = 130): Array<
       x: Math.round(x * 10) / 10,
       y: Math.round(y * 10) / 10,
       type: isOf ? 'of' : 'hm',
-      size: isOf ? 11 : 9,
+      size: isOf ? 14 : 11,
     });
   }
 
