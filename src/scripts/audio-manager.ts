@@ -1,8 +1,8 @@
 // ============================================================
 // audio-manager.ts — xAI TTS + Web Audio API playback engine
+// NO browser speech synthesis — xAI voice only
 // ============================================================
 
-import { speakWithSynthesis, type SpeechOptions } from './voice-recognition.ts';
 import { saveAudioCache, loadAudioCache, buildCacheKey, type WordTiming } from './storage-manager.ts';
 
 export interface TTSRequest {
@@ -22,7 +22,6 @@ export interface TTSResult {
 
 type WordCallback = (wordIndex: number) => void;
 type CompleteCallback = () => void;
-type ErrorCallback = (err: string) => void;
 
 // ── Ambient Gregorian Chant via Web Audio ─────────────────
 
@@ -41,21 +40,19 @@ export class AmbientAudio {
       this.gainNode.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 4);
       this.gainNode.connect(this.ctx.destination);
 
-      // Choir pad: root + fifth + octave + minor third (sacred chord quality)
       const baseFreq = 110; // A2
       const harmonics = [
         { freq: baseFreq,        gain: 0.5  },
-        { freq: baseFreq * 1.5,  gain: 0.3  }, // perfect fifth
-        { freq: baseFreq * 2,    gain: 0.25 }, // octave
-        { freq: baseFreq * 2.4,  gain: 0.15 }, // minor third approximation
-        { freq: baseFreq * 3,    gain: 0.1  }, // fifth+octave
+        { freq: baseFreq * 1.5,  gain: 0.3  },
+        { freq: baseFreq * 2,    gain: 0.25 },
+        { freq: baseFreq * 2.4,  gain: 0.15 },
+        { freq: baseFreq * 3,    gain: 0.1  },
       ];
 
       for (const h of harmonics) {
         const osc = this.ctx.createOscillator();
         const oscGain = this.ctx.createGain();
 
-        // LFO for breath-like vibrato
         const lfo = this.ctx.createOscillator();
         const lfoGain = this.ctx.createGain();
         lfo.frequency.value = 0.12 + Math.random() * 0.08;
@@ -104,20 +101,10 @@ export class AmbientAudio {
 
 export class AudioManager {
   private audioCtx: AudioContext | null = null;
-  private queue: Array<{ buffer: AudioBuffer; timings?: WordTiming[] }> = [];
   private isPlaying = false;
   private isPaused = false;
   private currentSource: AudioBufferSourceNode | null = null;
-  private fallbackController: { stop: () => void; pause: () => void; resume: () => void } | null = null;
-  private onWord: WordCallback = () => {};
-  private onComplete: CompleteCallback = () => {};
-  private onError: ErrorCallback = () => {};
-
-  setCallbacks(onWord: WordCallback, onComplete: CompleteCallback, onError: ErrorCallback): void {
-    this.onWord = onWord;
-    this.onComplete = onComplete;
-    this.onError = onError;
-  }
+  private wordTimer: ReturnType<typeof setInterval> | null = null;
 
   private getCtx(): AudioContext {
     if (!this.audioCtx || this.audioCtx.state === 'closed') {
@@ -144,16 +131,15 @@ export class AudioManager {
           voice_description: req.voiceDescription,
           system_prompt: voicePrompt,
         }),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(35000),
       });
 
-      // Check Content-Type — if JSON, the server returned an error
       const ct = response.headers.get('Content-Type') || '';
       if (!response.ok || ct.includes('application/json')) {
         const reason = ct.includes('json') ? await response.text().catch(() => '') : `HTTP ${response.status}`;
         console.warn(`[xAI TTS] attempt ${attempt} failed:`, reason);
-        if (attempt < 2) {
-          await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, 2000 * attempt));
           return this.fetchXAIAudio(req, attempt + 1);
         }
         return null;
@@ -162,8 +148,8 @@ export class AudioManager {
       const buf = await response.arrayBuffer();
       if (buf.byteLength < 500) {
         console.warn(`[xAI TTS] attempt ${attempt}: audio too small (${buf.byteLength} bytes)`);
-        if (attempt < 2) {
-          await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, 2000 * attempt));
           return this.fetchXAIAudio(req, attempt + 1);
         }
         return null;
@@ -173,8 +159,8 @@ export class AudioManager {
       return buf;
     } catch (err) {
       console.warn(`[xAI TTS] attempt ${attempt} error:`, err);
-      if (attempt < 2) {
-        await new Promise(r => setTimeout(r, 1500));
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 2000 * attempt));
         return this.fetchXAIAudio(req, attempt + 1);
       }
       return null;
@@ -198,7 +184,7 @@ export class AudioManager {
       }
     }
 
-    // Try xAI TTS API (with built-in retry)
+    // Try xAI TTS API (with retries)
     const xaiData = await this.fetchXAIAudio(req);
     if (xaiData) {
       try {
@@ -217,10 +203,10 @@ export class AudioManager {
       }
     }
 
-    // Fallback: Web Speech Synthesis — estimate duration from word count
-    console.warn('[TTS] falling back to browser speech for:', req.prayerKey);
+    // No audio available — return silent word-paced fallback (NO browser speech)
+    console.warn('[TTS] xAI unavailable — using silent text advance for:', req.prayerKey);
     const wordCount = req.text.split(/\s+/).length;
-    const estimatedDuration = wordCount / 2.0; // ~120 wpm / 60 = 2 words/sec
+    const estimatedDuration = wordCount / 2.0;
     return { usedFallback: true, duration: estimatedDuration };
   }
 
@@ -238,12 +224,10 @@ export class AudioManager {
 
     this.currentSource = source;
 
-    // Schedule word callbacks based on timings
     if (timings && timings.length > 0) {
-      const startTime = ctx.currentTime;
       timings.forEach((timing, idx) => {
         const delay = timing.start * 1000;
-        setTimeout(() => this.onWord(idx), delay);
+        setTimeout(() => this.onWordCb?.(idx), delay);
       });
     }
 
@@ -256,20 +240,29 @@ export class AudioManager {
     });
   }
 
-  // ── Play via Web Speech Synthesis (fallback) ─────────────
+  private onWordCb: WordCallback | null = null;
 
-  playSynthesis(text: string, langCode: string, onWord: WordCallback): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const opts: SpeechOptions = {
-        text,
-        lang: langCode,
-        rate: 0.80,
-        pitch: 0.88,
-        onBoundary: (wordIdx) => onWord(wordIdx),
-        onEnd: () => { this.fallbackController = null; resolve(); },
-        onError: (err) => { this.fallbackController = null; reject(new Error(err)); },
-      };
-      this.fallbackController = speakWithSynthesis(opts);
+  // ── Play with word-paced text advance (no audio, silent) ──
+
+  playSilentWordPaced(text: string, duration: number, onWord: WordCallback): Promise<void> {
+    const words = text.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return Promise.resolve();
+
+    const interval = (duration * 1000) / words.length;
+    let idx = 0;
+
+    return new Promise((resolve) => {
+      onWord(0);
+      this.wordTimer = setInterval(() => {
+        idx++;
+        if (idx >= words.length) {
+          if (this.wordTimer) clearInterval(this.wordTimer);
+          this.wordTimer = null;
+          resolve();
+        } else {
+          onWord(idx);
+        }
+      }, interval);
     });
   }
 
@@ -278,13 +271,11 @@ export class AudioManager {
     if (this.currentSource) {
       this.audioCtx?.suspend();
     }
-    this.fallbackController?.pause();
   }
 
   resume(): void {
     this.isPaused = false;
     this.audioCtx?.resume();
-    this.fallbackController?.resume();
   }
 
   stop(): void {
@@ -292,10 +283,7 @@ export class AudioManager {
     this.isPaused = false;
     try { this.currentSource?.stop(); } catch {}
     this.currentSource = null;
-    this.fallbackController?.stop();
-    this.fallbackController = null;
-    this.queue = [];
-    window.speechSynthesis?.cancel();
+    if (this.wordTimer) { clearInterval(this.wordTimer); this.wordTimer = null; }
     this.audioCtx?.suspend();
   }
 
@@ -310,14 +298,18 @@ export class AudioManager {
     const result = await this.generateAudio(req);
 
     if (result.usedFallback || !result.audioBuffer) {
-      try {
-        await this.playSynthesis(text, req.languageCode, onWord);
-      } catch {
-        // If synthesis fails too, just wait estimated duration
-        const delay = text.split(/\s+/).length * 400;
-        await new Promise(r => setTimeout(r, delay));
-      }
+      // Silent text advance — no audio, words still scroll
+      await this.playSilentWordPaced(text, result.duration, onWord);
     } else {
+      // Real xAI audio — estimate word timing from duration
+      this.onWordCb = onWord;
+      const words = text.split(/\s+/).filter(Boolean);
+      if (words.length > 0 && !result.wordTimings?.length) {
+        const interval = (result.audioBuffer.duration * 1000) / words.length;
+        for (let i = 0; i < words.length; i++) {
+          setTimeout(() => onWord(i), interval * i);
+        }
+      }
       await this.playBuffer(result.audioBuffer, result.wordTimings);
     }
     onComplete();
