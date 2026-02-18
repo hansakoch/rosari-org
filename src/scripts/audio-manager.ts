@@ -131,7 +131,7 @@ export class AudioManager {
 
   // ── xAI TTS via Cloudflare Pages Function proxy ──────────
 
-  async fetchXAIAudio(req: TTSRequest): Promise<ArrayBuffer | null> {
+  async fetchXAIAudio(req: TTSRequest, attempt = 1): Promise<ArrayBuffer | null> {
     try {
       const voicePrompt = `Speak as ${req.voiceDescription}, slow, clear, reverent. Language: ${req.language}.`;
       const response = await fetch('/api/tts', {
@@ -144,12 +144,39 @@ export class AudioManager {
           voice_description: req.voiceDescription,
           system_prompt: voicePrompt,
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
       });
 
-      if (!response.ok) return null;
-      return await response.arrayBuffer();
-    } catch {
+      // Check Content-Type — if JSON, the server returned an error
+      const ct = response.headers.get('Content-Type') || '';
+      if (!response.ok || ct.includes('application/json')) {
+        const reason = ct.includes('json') ? await response.text().catch(() => '') : `HTTP ${response.status}`;
+        console.warn(`[xAI TTS] attempt ${attempt} failed:`, reason);
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 1500));
+          return this.fetchXAIAudio(req, attempt + 1);
+        }
+        return null;
+      }
+
+      const buf = await response.arrayBuffer();
+      if (buf.byteLength < 500) {
+        console.warn(`[xAI TTS] attempt ${attempt}: audio too small (${buf.byteLength} bytes)`);
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, 1500));
+          return this.fetchXAIAudio(req, attempt + 1);
+        }
+        return null;
+      }
+
+      console.info(`[xAI TTS] success (${buf.byteLength} bytes, attempt ${attempt})`);
+      return buf;
+    } catch (err) {
+      console.warn(`[xAI TTS] attempt ${attempt} error:`, err);
+      if (attempt < 2) {
+        await new Promise(r => setTimeout(r, 1500));
+        return this.fetchXAIAudio(req, attempt + 1);
+      }
       return null;
     }
   }
@@ -166,10 +193,12 @@ export class AudioManager {
         const ctx = this.getCtx();
         const buffer = await ctx.decodeAudioData(cached.audioData.slice(0));
         return { audioBuffer: buffer, wordTimings: cached.wordTimings, usedFallback: false, duration: buffer.duration };
-      } catch {}
+      } catch (e) {
+        console.warn('[TTS] cached audio decode failed, will re-fetch:', e);
+      }
     }
 
-    // Try xAI TTS API
+    // Try xAI TTS API (with built-in retry)
     const xaiData = await this.fetchXAIAudio(req);
     if (xaiData) {
       try {
@@ -183,10 +212,13 @@ export class AudioManager {
           timestamp: Date.now(),
         });
         return { audioBuffer: buffer, usedFallback: false, duration: buffer.duration };
-      } catch {}
+      } catch (e) {
+        console.warn('[TTS] xAI audio decode failed (corrupt WAV?):', e);
+      }
     }
 
     // Fallback: Web Speech Synthesis — estimate duration from word count
+    console.warn('[TTS] falling back to browser speech for:', req.prayerKey);
     const wordCount = req.text.split(/\s+/).length;
     const estimatedDuration = wordCount / 2.0; // ~120 wpm / 60 = 2 words/sec
     return { usedFallback: true, duration: estimatedDuration };

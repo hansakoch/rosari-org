@@ -320,7 +320,7 @@ export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
 
 // ── Bead Layout Data ────────────────────────────────────────
 
-export function getBeadPositions(cx = 300, cy = 240, rx = 230, ry = 185): Array<{x: number; y: number; type: string; size: number}> {
+export function getBeadPositions(cx = 230, cy = 200, rx = 158, ry = 158): Array<{x: number; y: number; type: string; size: number}> {
   const positions: Array<{x: number; y: number; type: string; size: number}> = [];
 
   const tailBottom = cy + ry;
