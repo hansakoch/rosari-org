@@ -74,7 +74,7 @@ import KaraokeText from '../components/KaraokeText.astro';
   import { RosaryEngine } from '../scripts/rosary-engine.ts';
   import { audioManager, ambientAudio } from '../scripts/audio-manager.ts';
   import { savePreferences, loadPreferences } from '../scripts/storage-manager.ts';
-  import { startLanguagePrompt, announcePrompt, parseVoiceInput } from '../scripts/voice-recognition.ts';
+  import { parseVoiceInput } from '../scripts/voice-recognition.ts';
 
   // ── State ──────────────────────────────────────────────────
   let engine: RosaryEngine | null = null;
@@ -83,7 +83,6 @@ import KaraokeText from '../components/KaraokeText.astro';
   let currentVoiceDesc = 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, slow, reverent';
   let isRunning = false;
   let isStopping = false;
-  let recognitionController: { stop: () => void } | null = null;
 
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
@@ -299,20 +298,8 @@ import KaraokeText from '../components/KaraokeText.astro';
   function startLanguageSelection(): void {
     showVoicePrompt();
     ambientAudio.start(0.05);
-
-    setTimeout(() => {
-      announcePrompt('What language would you like to pray the Rosary in?', 'en-US');
-      updateVoiceStatus('Listening for your language…', true);
-    }, 800);
-
-    recognitionController = startLanguagePrompt(
-      (result) => handleLanguageSelected(result.language, result.languageCode, result.voiceDescription),
-      (err) => {
-        console.warn('Recognition error:', err);
-        updateVoiceStatus('Type your language below and press Begin.', false);
-      },
-      () => updateVoiceStatus('Listening…', true)
-    );
+    // Immediately show ready state — no browser speech dependency
+    updateVoiceStatus('Type your language below and press Begin.', false);
   }
 
   function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
@@ -321,7 +308,6 @@ import KaraokeText from '../components/KaraokeText.astro';
     currentVoiceDesc   = voiceDesc || 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, reverent';
 
     updateVoiceStatus(`✝ Praying in ${language}`, false);
-    recognitionController?.stop();
 
     savePreferences({
       language: currentLanguage,
@@ -443,30 +429,26 @@ import KaraokeText from '../components/KaraokeText.astro';
     btn.removeAttribute('disabled');
   });
 
-  // Voice commands (passive)
-  (() => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
-    const r = new SR();
-    r.continuous = true; r.lang = 'en-US';
-    r.onresult = (ev: any) => {
-      const cmd = ev.results[ev.results.length-1][0].transcript.toLowerCase();
-      if (cmd.includes('day mode')) applyTheme('day');
-      if (cmd.includes('night mode')) applyTheme('night');
-      if (cmd.includes('pause') && !cmd.includes('un')) { engine?.pause(); isRunning = false; audioManager.pause(); }
-      if (cmd.includes('resume') || cmd.includes('continue')) { engine?.resume(); isRunning = true; audioManager.resume(); playNextStep(); }
-    };
-    try { r.start(); } catch {}
-  })();
-
   document.addEventListener('click', () => {
     try { (audioManager as any)['audioCtx']?.resume?.(); } catch {}
   }, { once: true });
 
+  // ── Load preferences with timeout (IndexedDB can hang) ────
+  async function loadPrefsWithTimeout(ms = 2000): Promise<Awaited<ReturnType<typeof loadPreferences>>> {
+    return Promise.race([
+      loadPreferences(),
+      new Promise<null>((resolve) => setTimeout(() => {
+        console.warn('[init] loadPreferences timed out after', ms, 'ms — using defaults');
+        resolve(null);
+      }, ms)),
+    ]);
+  }
+
   // ── Boot ────────────────────────────────────────────────────
   async function init() {
     initSeasonalFooter();
-    const prefs = await loadPreferences();
+
+    const prefs = await loadPrefsWithTimeout();
     applyTheme(prefs?.theme || detectAutoTheme());
     applyMysteryTheme(getMysteryForDate().toString());
 
@@ -499,7 +481,11 @@ import KaraokeText from '../components/KaraokeText.astro';
     }
   }
 
-  init().catch(console.error);
+  init().catch((err) => {
+    console.error('[init] failed:', err);
+    // If init crashes, still show language selection so app isn't stuck
+    startLanguageSelection();
+  });
 </script>
 
 <style>
