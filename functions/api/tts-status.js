@@ -27,7 +27,7 @@ export async function onRequestGet(context) {
 
   // Quick WebSocket handshake test (no audio — just verify auth works)
   try {
-    const wsRes = await fetch('https://api.x.ai/v1/realtime', {
+    const wsRes = await fetch('https://api.x.ai/v1/realtime?model=grok-2-audio', {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Upgrade': 'websocket',
