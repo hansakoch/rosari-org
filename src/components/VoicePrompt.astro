@@ -1,0 +1,289 @@
+---
+// VoicePrompt.astro — Full-screen language selection overlay
+---
+<div id="voice-prompt-overlay" role="dialog" aria-modal="true" aria-label="Language selection">
+  <div class="vp-inner">
+    <!-- Cross -->
+    <div class="vp-cross" aria-hidden="true">✝</div>
+
+    <h1 class="vp-title">Rosari</h1>
+    <p class="vp-subtitle">The Holy Rosary</p>
+
+    <!-- Mic animation -->
+    <div class="vp-mic-ring" id="mic-ring" aria-hidden="true">
+      <div class="vp-mic-core">🎙</div>
+    </div>
+
+    <!-- Status text -->
+    <p class="vp-status" id="voice-status">
+      Preparing your rosary…
+    </p>
+
+    <p class="vp-hint">
+      Say a language and optional voice:<br />
+      <em>"Tagalog with Filipino woman"</em><br />
+      <em>"Latin"</em> · <em>"Polish"</em> · <em>"English with Irish man"</em>
+    </p>
+
+    <!-- Text fallback input -->
+    <div class="vp-text-row">
+      <input
+        id="language-text-input"
+        type="text"
+        placeholder="Type language here…"
+        autocomplete="off"
+        aria-label="Type your language"
+      />
+      <button id="language-text-submit" class="vp-go-btn" aria-label="Confirm language">Begin</button>
+    </div>
+
+    <!-- Quick picks -->
+    <div class="vp-quick-picks">
+      <button class="vp-pick" data-lang="English">English</button>
+      <button class="vp-pick" data-lang="Latin">Latin</button>
+      <button class="vp-pick" data-lang="Tagalog">Tagalog</button>
+      <button class="vp-pick" data-lang="Spanish">Spanish</button>
+      <button class="vp-pick" data-lang="Italian">Italian</button>
+      <button class="vp-pick" data-lang="Polish">Polish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Resume Banner (shown for returning users) -->
+<div id="resume-banner" style="display:none;" role="dialog" aria-label="Resume previous session">
+  <div class="resume-inner">
+    <p>Welcome back. Continue in <strong class="resume-lang"></strong>?</p>
+    <div class="resume-btns">
+      <button id="resume-yes-btn" class="btn-gold">Yes, begin</button>
+      <button id="resume-no-btn" class="btn-ghost">Choose language</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Quick pick buttons
+  document.querySelectorAll('.vp-pick').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('language-text-input') as HTMLInputElement;
+      if (input) input.value = (btn as HTMLButtonElement).dataset['lang'] || '';
+      document.getElementById('language-text-submit')?.click();
+    });
+  });
+
+  // Enter key on input
+  document.getElementById('language-text-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('language-text-submit')?.click();
+  });
+</script>
+
+<style>
+  #voice-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: radial-gradient(ellipse at center, #0d0b06 0%, #040302 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: fadeIn 1.2s ease forwards;
+  }
+
+  .vp-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    animation: fadeInUp 1s ease forwards;
+  }
+
+  .vp-cross {
+    font-size: 2.4rem;
+    color: var(--gold);
+    text-shadow: 0 0 20px var(--gold-glow);
+    margin-bottom: 0.25rem;
+  }
+
+  .vp-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: clamp(2.2rem, 8vw, 3.6rem);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--gold-light);
+    text-shadow: 0 0 40px var(--gold-glow), 0 2px 4px rgba(0,0,0,0.8);
+    margin: 0;
+  }
+
+  .vp-subtitle {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-top: -0.5rem;
+  }
+
+  /* Mic ring */
+  .vp-mic-ring {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 2px solid var(--gold-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.5rem 0;
+    transition: border-color 0.4s, box-shadow 0.4s;
+  }
+
+  .vp-mic-ring.listening {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow), 0 0 0 8px transparent;
+    animation: pulseListening 1.5s ease-in-out infinite;
+  }
+
+  .vp-mic-core {
+    font-size: 2rem;
+    user-select: none;
+  }
+
+  .vp-status {
+    font-size: 1.05rem;
+    color: var(--text-dim);
+    min-height: 2.5em;
+    transition: color 0.3s;
+  }
+
+  .vp-status.listening {
+    color: var(--accent2);
+  }
+
+  .vp-hint {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+    font-style: italic;
+  }
+
+  /* Text input row */
+  .vp-text-row {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  #language-text-input {
+    flex: 1;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    outline: none;
+  }
+
+  #language-text-input:focus {
+    border-color: var(--gold-dim);
+    background: rgba(255,255,255,0.07);
+  }
+
+  .vp-go-btn {
+    padding: 0.6rem 1.2rem;
+    background: var(--gold-dim);
+    color: var(--bg);
+    border-radius: 4px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    transition: background 0.2s, transform 0.15s;
+  }
+
+  .vp-go-btn:hover { background: var(--gold); transform: scale(1.03); }
+  .vp-go-btn:active { transform: scale(0.98); }
+
+  /* Quick picks */
+  .vp-quick-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    max-width: 380px;
+  }
+
+  .vp-pick {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+
+  .vp-pick:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold-light);
+    background: rgba(201,168,76,0.08);
+  }
+
+  /* Resume banner */
+  #resume-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 200;
+    background: var(--bg-glass);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem;
+    animation: fadeInUp 0.5s ease;
+  }
+
+  .resume-inner {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 1rem;
+    color: var(--text-dim);
+  }
+
+  .resume-btns {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-gold {
+    padding: 0.45rem 1.1rem;
+    background: var(--gold-dim);
+    color: var(--bg);
+    border-radius: 4px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  .btn-gold:hover { background: var(--gold); }
+
+  .btn-ghost {
+    padding: 0.45rem 1rem;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+
+  .btn-ghost:hover { border-color: var(--border); color: var(--text-dim); }
+</style>
