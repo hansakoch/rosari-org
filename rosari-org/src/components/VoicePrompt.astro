@@ -1,55 +1,37 @@
 ---
-// VoicePrompt.astro — Full-screen language selection overlay
+// VoicePrompt.astro — Clean, inclusive language selection screen
 ---
 <div id="voice-prompt-overlay" role="dialog" aria-modal="true" aria-label="Language selection">
   <div class="vp-inner">
-    <!-- Cross -->
     <div class="vp-cross" aria-hidden="true">✝</div>
-
     <h1 class="vp-title">Rosari</h1>
     <p class="vp-subtitle">The Holy Rosary</p>
 
-    <!-- Mic animation -->
     <div class="vp-mic-ring" id="mic-ring" aria-hidden="true">
       <div class="vp-mic-core">🎙</div>
     </div>
 
-    <!-- Status text -->
-    <p class="vp-status" id="voice-status">
-      Preparing your rosary…
-    </p>
+    <p class="vp-status" id="voice-status">Preparing your rosary…</p>
 
-    <p class="vp-hint">
-      Say a language and optional voice:<br />
-      <em>"Tagalog with Filipino woman"</em><br />
-      <em>"Latin"</em> · <em>"Polish"</em> · <em>"English with Irish man"</em>
-    </p>
+    <p class="vp-question">What language would you like to pray the Rosary in?</p>
 
-    <!-- Text fallback input -->
     <div class="vp-text-row">
       <input
         id="language-text-input"
         type="text"
-        placeholder="Type language here…"
+        placeholder="Type any language…"
         autocomplete="off"
+        spellcheck="false"
         aria-label="Type your language"
       />
-      <button id="language-text-submit" class="vp-go-btn" aria-label="Confirm language">Begin</button>
+      <button id="language-text-submit" class="vp-go-btn" aria-label="Begin">Begin</button>
     </div>
 
-    <!-- Quick picks -->
-    <div class="vp-quick-picks">
-      <button class="vp-pick" data-lang="English">English</button>
-      <button class="vp-pick" data-lang="Latin">Latin</button>
-      <button class="vp-pick" data-lang="Tagalog">Tagalog</button>
-      <button class="vp-pick" data-lang="Spanish">Spanish</button>
-      <button class="vp-pick" data-lang="Italian">Italian</button>
-      <button class="vp-pick" data-lang="Polish">Polish</button>
-    </div>
+    <p class="vp-hint">Say or type any language — your voice, your tongue, your prayer.</p>
   </div>
 </div>
 
-<!-- Resume Banner (shown for returning users) -->
+<!-- Resume Banner (returning users) -->
 <div id="resume-banner" style="display:none;" role="dialog" aria-label="Resume previous session">
   <div class="resume-inner">
     <p>Welcome back. Continue in <strong class="resume-lang"></strong>?</p>
@@ -61,16 +43,6 @@
 </div>
 
 <script>
-  // Quick pick buttons
-  document.querySelectorAll('.vp-pick').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById('language-text-input') as HTMLInputElement;
-      if (input) input.value = (btn as HTMLButtonElement).dataset['lang'] || '';
-      document.getElementById('language-text-submit')?.click();
-    });
-  });
-
-  // Enter key on input
   document.getElementById('language-text-input')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('language-text-submit')?.click();
   });
@@ -85,7 +57,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: 1.5rem;
     animation: fadeIn 1.2s ease forwards;
   }
 
@@ -93,48 +65,46 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    max-width: 480px;
+    gap: 1.1rem;
+    max-width: 440px;
     width: 100%;
     text-align: center;
     animation: fadeInUp 1s ease forwards;
   }
 
   .vp-cross {
-    font-size: 2.4rem;
+    font-size: 2.8rem;
     color: var(--gold);
-    text-shadow: 0 0 20px var(--gold-glow);
-    margin-bottom: 0.25rem;
+    text-shadow: 0 0 24px var(--gold-glow);
   }
 
   .vp-title {
     font-family: 'Cinzel', Georgia, serif;
-    font-size: clamp(2.2rem, 8vw, 3.6rem);
+    font-size: clamp(2.8rem, 10vw, 4.2rem);
     font-weight: 700;
     letter-spacing: 0.12em;
     color: var(--gold-light);
     text-shadow: 0 0 40px var(--gold-glow), 0 2px 4px rgba(0,0,0,0.8);
     margin: 0;
+    line-height: 1;
   }
 
   .vp-subtitle {
     font-family: 'Cormorant Garamond', serif;
     font-style: italic;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     color: var(--text-dim);
     letter-spacing: 0.08em;
-    margin-top: -0.5rem;
+    margin-top: -0.4rem;
   }
 
-  /* Mic ring */
   .vp-mic-ring {
-    width: 80px; height: 80px;
+    width: 72px; height: 72px;
     border-radius: 50%;
     border: 2px solid var(--gold-dim);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0.5rem 0;
     transition: border-color 0.4s, box-shadow 0.4s;
   }
 
@@ -144,47 +114,44 @@
     animation: pulseListening 1.5s ease-in-out infinite;
   }
 
-  .vp-mic-core {
-    font-size: 2rem;
-    user-select: none;
-  }
+  .vp-mic-core { font-size: 1.9rem; user-select: none; }
 
   .vp-status {
-    font-size: 1.05rem;
+    font-size: 1rem;
     color: var(--text-dim);
-    min-height: 2.5em;
+    min-height: 2.2em;
     transition: color 0.3s;
   }
 
-  .vp-status.listening {
-    color: var(--accent2);
+  .vp-status.listening { color: var(--accent2); }
+
+  .vp-question {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1rem, 3.5vw, 1.25rem);
+    color: var(--gold-light);
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+    font-weight: 400;
   }
 
-  .vp-hint {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    line-height: 1.8;
-    font-style: italic;
-  }
-
-  /* Text input row */
   .vp-text-row {
     display: flex;
     gap: 0.5rem;
     width: 100%;
-    max-width: 360px;
+    max-width: 380px;
   }
 
   #language-text-input {
     flex: 1;
-    padding: 0.6rem 0.9rem;
+    padding: 0.7rem 1rem;
     border: 1px solid var(--border);
     border-radius: 4px;
     background: rgba(255,255,255,0.04);
     color: var(--text);
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1rem;
+    font-size: 1.05rem;
     outline: none;
+    letter-spacing: 0.02em;
   }
 
   #language-text-input:focus {
@@ -193,44 +160,28 @@
   }
 
   .vp-go-btn {
-    padding: 0.6rem 1.2rem;
+    padding: 0.7rem 1.4rem;
     background: var(--gold-dim);
     color: var(--bg);
     border-radius: 4px;
     font-family: 'Cinzel', serif;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
   }
 
   .vp-go-btn:hover { background: var(--gold); transform: scale(1.03); }
   .vp-go-btn:active { transform: scale(0.98); }
 
-  /* Quick picks */
-  .vp-quick-picks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: center;
-    max-width: 380px;
-  }
-
-  .vp-pick {
-    padding: 0.4rem 0.9rem;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    background: transparent;
-    color: var(--text-dim);
+  .vp-hint {
     font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
     font-size: 0.9rem;
-    transition: all 0.2s;
-  }
-
-  .vp-pick:hover {
-    border-color: var(--gold-dim);
-    color: var(--gold-light);
-    background: rgba(201,168,76,0.08);
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-width: 320px;
   }
 
   /* Resume banner */
@@ -257,10 +208,7 @@
     color: var(--text-dim);
   }
 
-  .resume-btns {
-    display: flex;
-    gap: 0.5rem;
-  }
+  .resume-btns { display: flex; gap: 0.5rem; }
 
   .btn-gold {
     padding: 0.45rem 1.1rem;
@@ -272,7 +220,6 @@
     font-weight: 600;
     transition: background 0.2s;
   }
-
   .btn-gold:hover { background: var(--gold); }
 
   .btn-ghost {
@@ -284,6 +231,5 @@
     font-size: 0.85rem;
     transition: all 0.2s;
   }
-
   .btn-ghost:hover { border-color: var(--border); color: var(--text-dim); }
 </style>
