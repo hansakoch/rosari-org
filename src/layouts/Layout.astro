@@ -1,0 +1,220 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+const {
+  title = 'Rosari — Pray the Holy Rosary',
+  description = 'A premium, reverent Catholic rosary web application. Pray in any language, on any device, anywhere.',
+} = Astro.props;
+---
+<!doctype html>
+<html lang="en" data-theme="night" data-mystery="glorious">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content={description} />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Rosari" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://rosari.org" />
+
+  <title>{title}</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap"
+    rel="stylesheet"
+  />
+
+  <style is:global>
+    /* ── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ── CSS Variables / Theming ──────────────────────────── */
+    :root {
+      --bg:           #080808;
+      --bg-secondary: #0f0e0c;
+      --bg-card:      #111009;
+      --bg-glass:     rgba(10, 9, 6, 0.85);
+
+      --gold:         #c9a84c;
+      --gold-light:   #f5d06e;
+      --gold-dim:     #7a6228;
+      --gold-glow:    rgba(201, 168, 76, 0.25);
+      --silver:       #a8a9ad;
+
+      --red-dark:     #4a0000;
+      --red:          #8b0000;
+      --red-light:    #cc2200;
+
+      --text:         #e8dcc8;
+      --text-dim:     #a09070;
+      --text-muted:   #6a5a40;
+      --text-gold:    #c9a84c;
+
+      --border:       rgba(201, 168, 76, 0.18);
+      --border-dim:   rgba(201, 168, 76, 0.08);
+
+      /* Mystery accent (overridden per mystery) */
+      --accent:       #1a237e;
+      --accent2:      #4fc3f7;
+      --accent-glow:  rgba(26, 35, 126, 0.3);
+
+      --candle-warm:  rgba(255, 110, 20, 0.10);
+      --candle-core:  rgba(255, 160, 40, 0.06);
+    }
+
+    /* Day Mode */
+    [data-theme="day"] {
+      --bg:           #f5f0e6;
+      --bg-secondary: #ede5d2;
+      --bg-card:      #e8dec8;
+      --bg-glass:     rgba(245, 240, 230, 0.92);
+      --text:         #1a1208;
+      --text-dim:     #4a3820;
+      --text-muted:   #6a5030;
+      --text-gold:    #7a5010;
+      --border:       rgba(100, 70, 20, 0.25);
+      --gold:         #8b6010;
+      --gold-light:   #b08020;
+      --candle-warm:  rgba(200, 140, 20, 0.08);
+    }
+
+    /* Mystery Themes */
+    [data-mystery="joyful"]    { --accent: #c8960c; --accent2: #fff3a0; --accent-glow: rgba(200,150,12,0.3); }
+    [data-mystery="sorrowful"] { --accent: #8b0000; --accent2: #ff4444; --accent-glow: rgba(139,0,0,0.35); }
+    [data-mystery="glorious"]  { --accent: #1a237e; --accent2: #7ab8ff; --accent-glow: rgba(26,35,126,0.3); }
+    [data-mystery="luminous"]  { --accent: #6a0dad; --accent2: #81c784; --accent-glow: rgba(106,13,173,0.3); }
+
+    /* ── Typography ───────────────────────────────────────── */
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100svh;
+      overflow-x: hidden;
+      line-height: 1.65;
+      transition: background 0.6s ease, color 0.4s ease;
+    }
+
+    h1, h2, h3, .heading {
+      font-family: 'Cinzel', Georgia, serif;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Candle Flicker Overlay ────────────────────────────── */
+    .candle-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 110%, var(--candle-warm) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 50% 105%, var(--candle-core) 0%, transparent 60%);
+      animation: candleFlicker 5s ease-in-out infinite;
+    }
+
+    @keyframes candleFlicker {
+      0%   { opacity: 1.00; transform: scaleX(1.000) scaleY(1.000); }
+      6%   { opacity: 0.87; transform: scaleX(1.008) scaleY(0.996); }
+      13%  { opacity: 0.94; transform: scaleX(0.994) scaleY(1.004); }
+      21%  { opacity: 0.82; transform: scaleX(1.006) scaleY(0.998); }
+      28%  { opacity: 0.96; transform: scaleX(0.998) scaleY(1.002); }
+      35%  { opacity: 0.88; transform: scaleX(1.004) scaleY(0.997); }
+      43%  { opacity: 0.93; transform: scaleX(0.997) scaleY(1.003); }
+      51%  { opacity: 0.79; transform: scaleX(1.010) scaleY(0.994); }
+      59%  { opacity: 0.97; transform: scaleX(0.993) scaleY(1.006); }
+      67%  { opacity: 0.85; transform: scaleX(1.007) scaleY(0.995); }
+      75%  { opacity: 0.91; transform: scaleX(0.996) scaleY(1.004); }
+      83%  { opacity: 0.84; transform: scaleX(1.005) scaleY(0.997); }
+      91%  { opacity: 0.95; transform: scaleX(0.998) scaleY(1.002); }
+      100% { opacity: 1.00; transform: scaleX(1.000) scaleY(1.000); }
+    }
+
+    /* ── Bead Animations ──────────────────────────────────── */
+    @keyframes beadPulse {
+      0%, 100% {
+        filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 6px var(--accent-glow));
+        transform: scale(1.0);
+      }
+      50% {
+        filter: drop-shadow(0 0 8px var(--accent)) drop-shadow(0 0 16px var(--accent)) drop-shadow(0 0 24px var(--accent-glow));
+        transform: scale(1.12);
+      }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes pulseListening {
+      0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+      50% { box-shadow: 0 0 0 12px transparent; }
+    }
+
+    /* ── Utility ──────────────────────────────────────────── */
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+    }
+
+    .gold-text { color: var(--gold-light); }
+
+    button {
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <!-- Candle glow overlay -->
+  <div class="candle-glow" aria-hidden="true"></div>
+
+  <slot />
+
+  <!-- Service Worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
