@@ -5,7 +5,7 @@
 <div class="rosary-wrap" id="rosary-wrap" role="img" aria-label="Rosary bead visualization">
   <svg
     id="rosary-svg"
-    viewBox="0 0 600 540"
+    viewBox="0 0 460 500"
     xmlns="http://www.w3.org/2000/svg"
     aria-hidden="true"
     preserveAspectRatio="xMidYMid meet"
@@ -55,10 +55,10 @@
       </filter>
     </defs>
 
-    <!-- Main oval chain -->
-    <ellipse
-      cx="300" cy="230"
-      rx="228" ry="183"
+    <!-- Main circular chain (📿 emoji shape) -->
+    <circle
+      cx="230" cy="200"
+      r="158"
       fill="none"
       stroke="var(--gold-dim)"
       stroke-width="1.5"
@@ -67,12 +67,12 @@
     />
 
     <!-- Tail chain -->
-    <line x1="300" y1="413" x2="300" y2="525"
+    <line x1="230" y1="358" x2="230" y2="460"
       stroke="var(--gold-dim)" stroke-width="1.5" opacity="0.35"/>
 
     <!-- Crucifix (always rendered at tail bottom) -->
     <g id="bead-crucifix" class="bead-group bead-crucifix" data-bead-idx="0"
-       transform="translate(300,530)">
+       transform="translate(230,466)">
       <!-- Cross -->
       <rect x="-5.5" y="-22" width="11" height="42" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
       <rect x="-14" y="-8" width="28" height="9" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
@@ -103,7 +103,7 @@
 <script>
   import { getBeadPositions } from '../scripts/rosary-data.ts';
 
-  const CX = 300, CY = 230, RX = 228, RY = 183;
+  const CX = 230, CY = 200, RX = 158, RY = 158;
   const positions = getBeadPositions(CX, CY, RX, RY);
 
   function makeBead(

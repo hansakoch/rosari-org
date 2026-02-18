@@ -128,8 +128,8 @@ async function xaiVoiceTTS(text, language, languageCode, voiceDescription, apiKe
 
     const timer = setTimeout(() => {
       try { ws.close(); } catch {}
-      reject(new Error('xAI TTS timeout (25s)'));
-    }, 25000);
+      reject(new Error('xAI TTS timeout (28s)'));
+    }, 28000);
 
     const finish = (err) => {
       clearTimeout(timer);
