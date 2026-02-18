@@ -65,3 +65,4 @@ dist
 
 # icebergsites - business-specific config (generated per project)
 .business-config.json
+rosari-org/node_modules/ echo rosari-org/dist/ git -C /home/user/sites add rosari-org/ git -C /home/user/sites status --short

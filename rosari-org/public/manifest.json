@@ -1,0 +1,30 @@
+{
+  "name": "Rosari — The Holy Rosary",
+  "short_name": "Rosari",
+  "description": "Pray the complete Holy Rosary in any language. Reverent, offline-capable, pure prayer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "spirituality", "religion"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Begin Rosary",
+      "short_name": "Begin",
+      "description": "Start praying the rosary immediately",
+      "url": "/?autostart=1",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    }
+  ]
+}
