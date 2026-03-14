@@ -32,7 +32,12 @@ let db: IDBDatabase | null = null;
 async function openDB(): Promise<IDBDatabase> {
   if (db) return db;
   return new Promise((resolve, reject) => {
+    // 2 second timeout — if IndexedDB is blocked (another tab, version conflict),
+    // reject so callers fall back to localStorage instead of hanging forever.
+    const timer = setTimeout(() => reject(new Error('IndexedDB timed out')), 2000);
+
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+
     req.onupgradeneeded = (e) => {
       const database = (e.target as IDBOpenDBRequest).result;
       if (!database.objectStoreNames.contains('preferences')) {
@@ -43,11 +48,17 @@ async function openDB(): Promise<IDBDatabase> {
         store.createIndex('timestamp', 'timestamp');
       }
     };
+
     req.onsuccess = (e) => {
+      clearTimeout(timer);
       db = (e.target as IDBOpenDBRequest).result;
       resolve(db);
     };
-    req.onerror = () => reject(req.error);
+
+    req.onerror = () => { clearTimeout(timer); reject(req.error); };
+
+    // Another tab holds the DB open during an upgrade — reject so we fall back.
+    req.onblocked = () => { clearTimeout(timer); reject(new Error('IndexedDB blocked')); };
   });
 }
 

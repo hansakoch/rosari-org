@@ -255,7 +255,6 @@ import KaraokeText from '../components/KaraokeText.astro';
     const step = state.currentStep;
     const isMystery = step.prayer === 'mysteryAnnounce';
 
-    // Use localized prayer text for TTS
     let ttsText: string;
     if (isMystery) {
       ttsText = `${state.currentPrayerTitle}. ${state.currentMeditationText}`;
@@ -266,21 +265,39 @@ import KaraokeText from '../components/KaraokeText.astro';
 
     const prayerKey = `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`;
 
-    await audioManager.playStep(
-      ttsText,
-      {
-        text: ttsText,
-        language: currentLanguage,
-        languageCode: currentLanguageCode,
-        voiceDescription: currentVoiceDesc,
-        prayerKey,
-      },
-      (wordIdx: number) => {
-        engine?.setWordIndex(wordIdx);
-        renderState(engine!.getState());
-      },
-      () => {}
-    );
+    // Show loading indicator while xAI generates audio
+    const loadingEl = document.getElementById('audio-loading');
+    if (loadingEl) loadingEl.style.display = 'block';
+
+    try {
+      await audioManager.playStep(
+        ttsText,
+        {
+          text: ttsText,
+          language: currentLanguage,
+          languageCode: currentLanguageCode,
+          voiceDescription: currentVoiceDesc,
+          prayerKey,
+        },
+        (wordIdx: number) => {
+          engine?.setWordIndex(wordIdx);
+          renderState(engine!.getState());
+        },
+        () => {}
+      );
+    } catch (err) {
+      const msg = (err as Error).message || String(err);
+      console.error('[audio] playStep failed:', msg);
+      isRunning = false;
+      const errEl = document.getElementById('audio-error');
+      if (errEl) {
+        errEl.textContent = `Audio error: ${msg}`;
+        errEl.style.display = 'block';
+      }
+      return;
+    } finally {
+      if (loadingEl) loadingEl.style.display = 'none';
+    }
 
     if (!isRunning || isStopping) return;
 
@@ -293,8 +310,7 @@ import KaraokeText from '../components/KaraokeText.astro';
     if (!isRunning || isStopping) return;
 
     const hasNext = engine!.nextStep();
-    const newState = engine!.getState();
-    renderState(newState);
+    renderState(engine!.getState());
 
     if (hasNext && isRunning && !isStopping) playNextStep();
   }
@@ -354,6 +370,7 @@ import KaraokeText from '../components/KaraokeText.astro';
 
   // ── Controls ───────────────────────────────────────────────
   el('play-pause-btn')?.addEventListener('click', () => {
+    audioManager.unlock();
     if (!engine) { startRosary(); return; }
     const state = engine.getState();
     if (state.engineState === 'playing') {
@@ -464,7 +481,7 @@ import KaraokeText from '../components/KaraokeText.astro';
   })();
 
   document.addEventListener('click', () => {
-    try { (audioManager as any)['audioCtx']?.resume?.(); } catch {}
+    audioManager.unlock();
   }, { once: true });
 
   // ── Boot ────────────────────────────────────────────────────
@@ -489,6 +506,7 @@ import KaraokeText from '../components/KaraokeText.astro';
       }
 
       el('resume-yes-btn')?.addEventListener('click', () => {
+        audioManager.unlock(); // Must unlock AudioContext synchronously inside gesture
         el('resume-banner')?.remove();
         hideVoicePrompt();
         ambientAudio.start(0.05);
