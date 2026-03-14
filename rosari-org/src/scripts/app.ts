@@ -266,6 +266,7 @@ function startRosary(): void {
 function setupControls(): void {
   // Play/Pause
   el('play-pause-btn')?.addEventListener('click', () => {
+    audioManager.unlock(); // iOS: must create/resume AudioContext synchronously in gesture
     if (!engine) { startRosary(); return; }
     const state = engine.getState();
     if (state.engineState === 'playing') {
@@ -429,6 +430,7 @@ async function init(): Promise<void> {
     }
 
     el('resume-yes-btn')?.addEventListener('click', () => {
+      audioManager.unlock(); // iOS: unlock AudioContext synchronously in gesture
       resume?.remove();
       hideVoicePrompt();
       ambientAudio.start(0.05);
@@ -451,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
   init().catch(console.error);
 });
 
-// Resume AudioContext on user gesture (iOS requirement)
+// Unlock AudioContext on first user gesture (iOS requires synchronous creation inside gesture)
 document.addEventListener('click', () => {
-  audioManager['audioCtx']?.resume?.();
+  audioManager.unlock();
 }, { once: true });

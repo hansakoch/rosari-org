@@ -129,6 +129,11 @@ export class AudioManager {
     return this.audioCtx;
   }
 
+  /** Call synchronously inside a user gesture to unlock AudioContext on iOS. */
+  unlock(): void {
+    this.getCtx();
+  }
+
   // ── xAI TTS via Cloudflare Pages Function proxy ──────────
 
   async fetchXAIAudio(req: TTSRequest): Promise<ArrayBuffer | null> {
