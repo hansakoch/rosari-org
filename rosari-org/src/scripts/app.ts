@@ -160,24 +160,38 @@ async function playNextStep(): Promise<void> {
   if (step.prayer === 'mysteryAnnounce') {
     text = `${state.currentPrayerTitle}. ${state.currentMeditationText}`;
   } else if (step.prayer === 'goInPeace') {
-    // Special whisper ending
     text = 'Go in peace.';
   }
 
-  await audioManager.playStep(
-    text,
-    {
+  // Show loading indicator while xAI generates audio
+  const loadingEl = el('audio-loading');
+  if (loadingEl) loadingEl.style.display = 'block';
+
+  try {
+    await audioManager.playStep(
       text,
-      language: currentLanguage,
-      languageCode: currentLanguageCode,
-      voiceDescription: currentVoiceDesc,
-      prayerKey: `${step.prayer}-${step.decadeIndex ?? 0}-${step.hailMaryIndex ?? 0}`,
-    },
-    (wordIdx) => {
-      engine.setWordIndex(wordIdx);
-    },
-    () => {} // completion handled below
-  );
+      {
+        text,
+        language: currentLanguage,
+        languageCode: currentLanguageCode,
+        voiceDescription: currentVoiceDesc,
+        prayerKey: `${step.prayer}-${step.decadeIndex ?? 0}-${step.hailMaryIndex ?? 0}`,
+      },
+      (wordIdx) => { engine.setWordIndex(wordIdx); },
+      () => {}
+    );
+  } catch (err) {
+    console.error('Audio error:', err);
+    isRunning = false;
+    const errEl = el('audio-error');
+    if (errEl) {
+      errEl.textContent = `Audio error: ${(err as Error).message}`;
+      errEl.style.display = 'block';
+    }
+    return;
+  } finally {
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
 
   // Brief pause between prayers
   const pauseDur = step.prayer === 'mysteryAnnounce' ? 1500 : 500;
@@ -453,14 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
   init().catch(console.error);
 });
 
-// Unlock audio on first user gesture — iOS requires both AudioContext and speechSynthesis
-// to be touched synchronously inside a gesture handler before any async code runs.
+// Unlock AudioContext on first user gesture (iOS requires synchronous creation inside gesture)
 document.addEventListener('click', () => {
   audioManager.unlock();
-  // Pre-trigger speechSynthesis with a silent utterance so the fallback path works on iOS
-  if (window.speechSynthesis) {
-    const silent = new SpeechSynthesisUtterance('');
-    silent.volume = 0;
-    window.speechSynthesis.speak(silent);
-  }
 }, { once: true });

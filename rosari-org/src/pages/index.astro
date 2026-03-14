@@ -55,6 +55,10 @@ import KaraokeText from '../components/KaraokeText.astro';
       <span class="ftr-brand">rosari.org</span>
     </footer>
 
+    <!-- ── Audio status ──────────────────────────────────── -->
+    <div id="audio-loading" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;padding:.5rem 1.2rem;border-radius:2rem;font-size:.85rem;z-index:200;pointer-events:none;">⏳ Generating audio…</div>
+    <div id="audio-error" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:#8b0000;color:#fff;padding:.6rem 1.4rem;border-radius:2rem;font-size:.85rem;z-index:200;max-width:90vw;text-align:center;cursor:pointer;" onclick="this.style.display='none'"></div>
+
     <!-- ── Finished overlay ───────────────────────────────── -->
     <div id="finished-message" class="finished-overlay" style="display:none;" role="status">
       <div class="fin-cross" aria-hidden="true">✝</div>

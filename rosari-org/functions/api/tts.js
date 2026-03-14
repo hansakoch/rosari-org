@@ -111,7 +111,7 @@ async function xaiVoiceTTS(text, language, languageCode, voiceDescription, apiKe
       'Upgrade':                  'websocket',
       'Connection':               'Upgrade',
       'Sec-WebSocket-Version':    '13',
-      'Sec-WebSocket-Key':        btoa(crypto.getRandomValues(new Uint8Array(16)).join('')),
+      'Sec-WebSocket-Key':        btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
     },
   });
 

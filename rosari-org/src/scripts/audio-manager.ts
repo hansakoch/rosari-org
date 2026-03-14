@@ -2,7 +2,6 @@
 // audio-manager.ts — xAI TTS + Web Audio API playback engine
 // ============================================================
 
-import { speakWithSynthesis, type SpeechOptions } from './voice-recognition.ts';
 import { saveAudioCache, loadAudioCache, buildCacheKey, type WordTiming } from './storage-manager.ts';
 
 export interface TTSRequest {
@@ -13,16 +12,8 @@ export interface TTSRequest {
   prayerKey: string;
 }
 
-export interface TTSResult {
-  audioBuffer?: AudioBuffer;
-  wordTimings?: WordTiming[];
-  usedFallback: boolean;
-  duration: number;
-}
-
 type WordCallback = (wordIndex: number) => void;
 type CompleteCallback = () => void;
-type ErrorCallback = (err: string) => void;
 
 // ── Ambient Gregorian Chant via Web Audio ─────────────────
 
@@ -104,20 +95,8 @@ export class AmbientAudio {
 
 export class AudioManager {
   private audioCtx: AudioContext | null = null;
-  private queue: Array<{ buffer: AudioBuffer; timings?: WordTiming[] }> = [];
-  private isPlaying = false;
   private isPaused = false;
   private currentSource: AudioBufferSourceNode | null = null;
-  private fallbackController: { stop: () => void; pause: () => void; resume: () => void } | null = null;
-  private onWord: WordCallback = () => {};
-  private onComplete: CompleteCallback = () => {};
-  private onError: ErrorCallback = () => {};
-
-  setCallbacks(onWord: WordCallback, onComplete: CompleteCallback, onError: ErrorCallback): void {
-    this.onWord = onWord;
-    this.onComplete = onComplete;
-    this.onError = onError;
-  }
 
   private getCtx(): AudioContext {
     if (!this.audioCtx || this.audioCtx.state === 'closed') {
@@ -136,35 +115,36 @@ export class AudioManager {
 
   // ── xAI TTS via Cloudflare Pages Function proxy ──────────
 
-  async fetchXAIAudio(req: TTSRequest): Promise<ArrayBuffer | null> {
-    try {
-      const voicePrompt = `Speak as ${req.voiceDescription}, slow, clear, reverent. Language: ${req.language}.`;
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: req.text,
-          language: req.language,
-          language_code: req.languageCode,
-          voice_description: req.voiceDescription,
-          system_prompt: voicePrompt,
-        }),
-        signal: AbortSignal.timeout(15000),
-      });
+  async fetchXAIAudio(req: TTSRequest): Promise<ArrayBuffer> {
+    const voicePrompt = `Speak as ${req.voiceDescription}, slow, clear, reverent. Language: ${req.language}.`;
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: req.text,
+        language: req.language,
+        language_code: req.languageCode,
+        voice_description: req.voiceDescription,
+        system_prompt: voicePrompt,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
 
-      if (!response.ok) return null;
-      return await response.arrayBuffer();
-    } catch {
-      return null;
+    if (!response.ok) {
+      let reason = `HTTP ${response.status}`;
+      try { const j = await response.json() as any; reason = j.reason || j.error || reason; } catch {}
+      throw new Error(`xAI TTS failed: ${reason}`);
     }
+
+    return response.arrayBuffer();
   }
 
-  // ── Generate audio for a prayer step ─────────────────────
+  // ── Generate and decode audio for a prayer step ──────────
 
-  async generateAudio(req: TTSRequest): Promise<TTSResult> {
+  async generateAudio(req: TTSRequest): Promise<{ buffer: AudioBuffer; wordTimings?: WordTiming[] }> {
     const cacheKey = buildCacheKey(req.prayerKey, req.language, req.voiceDescription);
 
-    // Try cache first
+    // Try local cache first
     const cached = await loadAudioCache(cacheKey);
     if (cached?.audioData) {
       try {
@@ -172,38 +152,35 @@ export class AudioManager {
         const buffer = await new Promise<AudioBuffer>((res, rej) =>
           ctx.decodeAudioData(cached.audioData!.slice(0), res, rej)
         );
-        return { audioBuffer: buffer, wordTimings: cached.wordTimings, usedFallback: false, duration: buffer.duration };
-      } catch {}
+        return { buffer, wordTimings: cached.wordTimings };
+      } catch {
+        // Cache entry corrupt — fall through to API
+      }
     }
 
-    // Try xAI TTS API
+    // Fetch from xAI (throws on failure)
     const xaiData = await this.fetchXAIAudio(req);
-    if (xaiData) {
-      try {
-        const ctx = this.getCtx();
-        const buffer = await new Promise<AudioBuffer>((res, rej) =>
-          ctx.decodeAudioData(xaiData.slice(0), res, rej)
-        );
-        await saveAudioCache({
-          key: cacheKey,
-          audioData: xaiData,
-          text: req.text,
-          duration: buffer.duration,
-          timestamp: Date.now(),
-        });
-        return { audioBuffer: buffer, usedFallback: false, duration: buffer.duration };
-      } catch {}
-    }
 
-    // Fallback: Web Speech Synthesis — estimate duration from word count
-    const wordCount = req.text.split(/\s+/).length;
-    const estimatedDuration = wordCount / 2.0; // ~120 wpm / 60 = 2 words/sec
-    return { usedFallback: true, duration: estimatedDuration };
+    const ctx = this.getCtx();
+    const buffer = await new Promise<AudioBuffer>((res, rej) =>
+      ctx.decodeAudioData(xaiData.slice(0), res, rej)
+    );
+
+    // Persist to cache (non-blocking)
+    saveAudioCache({
+      key: cacheKey,
+      audioData: xaiData,
+      text: req.text,
+      duration: buffer.duration,
+      timestamp: Date.now(),
+    }).catch(() => {});
+
+    return { buffer };
   }
 
   // ── Play audio buffer ─────────────────────────────────────
 
-  async playBuffer(buffer: AudioBuffer, timings?: WordTiming[]): Promise<void> {
+  async playBuffer(buffer: AudioBuffer, onWord: WordCallback, timings?: WordTiming[]): Promise<void> {
     const ctx = this.getCtx();
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -215,12 +192,9 @@ export class AudioManager {
 
     this.currentSource = source;
 
-    // Schedule word callbacks based on timings
     if (timings && timings.length > 0) {
-      const startTime = ctx.currentTime;
       timings.forEach((timing, idx) => {
-        const delay = timing.start * 1000;
-        setTimeout(() => this.onWord(idx), delay);
+        setTimeout(() => onWord(idx), timing.start * 1000);
       });
     }
 
@@ -233,70 +207,33 @@ export class AudioManager {
     });
   }
 
-  // ── Play via Web Speech Synthesis (fallback) ─────────────
-
-  playSynthesis(text: string, langCode: string, onWord: WordCallback): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const opts: SpeechOptions = {
-        text,
-        lang: langCode,
-        rate: 0.80,
-        pitch: 0.88,
-        onBoundary: (wordIdx) => onWord(wordIdx),
-        onEnd: () => { this.fallbackController = null; resolve(); },
-        onError: (err) => { this.fallbackController = null; reject(new Error(err)); },
-      };
-      this.fallbackController = speakWithSynthesis(opts);
-    });
-  }
-
   pause(): void {
     this.isPaused = true;
-    if (this.currentSource) {
-      this.audioCtx?.suspend();
-    }
-    this.fallbackController?.pause();
+    this.audioCtx?.suspend();
   }
 
   resume(): void {
     this.isPaused = false;
     this.audioCtx?.resume();
-    this.fallbackController?.resume();
   }
 
   stop(): void {
-    this.isPlaying = false;
     this.isPaused = false;
     try { this.currentSource?.stop(); } catch {}
     this.currentSource = null;
-    this.fallbackController?.stop();
-    this.fallbackController = null;
-    this.queue = [];
-    window.speechSynthesis?.cancel();
     this.audioCtx?.suspend();
   }
 
-  // ── Convenience: play a prayer step ──────────────────────
+  // ── Play a prayer step — xAI only, no fallback ───────────
 
   async playStep(
-    text: string,
+    _text: string,
     req: TTSRequest,
     onWord: WordCallback,
     onComplete: CompleteCallback
   ): Promise<void> {
-    const result = await this.generateAudio(req);
-
-    if (result.usedFallback || !result.audioBuffer) {
-      try {
-        await this.playSynthesis(text, req.languageCode, onWord);
-      } catch {
-        // If synthesis fails too, just wait estimated duration
-        const delay = text.split(/\s+/).length * 400;
-        await new Promise(r => setTimeout(r, delay));
-      }
-    } else {
-      await this.playBuffer(result.audioBuffer, result.wordTimings);
-    }
+    const { buffer, wordTimings } = await this.generateAudio(req);
+    await this.playBuffer(buffer, onWord, wordTimings);
     onComplete();
   }
 }
