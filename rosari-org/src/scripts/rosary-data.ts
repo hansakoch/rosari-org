@@ -320,17 +320,17 @@ export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
 
 // ── Bead Layout Data ────────────────────────────────────────
 
-export function getBeadPositions(cx = 300, cy = 213, rx = 213, ry = 197): Array<{x: number; y: number; type: string; size: number}> {
+export function getBeadPositions(cx = 300, cy = 232, rx = 208, ry = 182): Array<{x: number; y: number; type: string; size: number}> {
   const positions: Array<{x: number; y: number; type: string; size: number}> = [];
 
-  // Near-circular loop (rx≈ry) → looks like the 📿 emoji
-  const tailBottom = cy + ry; // = 410 for defaults
-  positions.push({ x: cx, y: tailBottom + 111, type: 'crucifix',  size: 18 }); // 0 → y=521
-  positions.push({ x: cx, y: tailBottom +  77, type: 'of',        size: 14 }); // 1 → y=487
-  positions.push({ x: cx, y: tailBottom +  58, type: 'hm',        size: 11 }); // 2 → y=468
-  positions.push({ x: cx, y: tailBottom +  40, type: 'hm',        size: 11 }); // 3 → y=450
-  positions.push({ x: cx, y: tailBottom +  20, type: 'hm',        size: 11 }); // 4 → y=430
-  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=410
+  // Loop tilted 15° (like the 📿 emoji) — beads placed pre-rotation, SVG group rotates them
+  const tailBottom = cy + ry; // = 414 for defaults
+  positions.push({ x: cx, y: tailBottom + 103, type: 'crucifix',  size: 18 }); // 0 → y=517
+  positions.push({ x: cx, y: tailBottom +  77, type: 'of',        size: 14 }); // 1 → y=491
+  positions.push({ x: cx, y: tailBottom +  57, type: 'hm',        size: 11 }); // 2 → y=471
+  positions.push({ x: cx, y: tailBottom +  39, type: 'hm',        size: 11 }); // 3 → y=453
+  positions.push({ x: cx, y: tailBottom +  20, type: 'hm',        size: 11 }); // 4 → y=434
+  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=414
 
   const GAP_DEG = 8;
   const arcTotal = 360 - GAP_DEG;

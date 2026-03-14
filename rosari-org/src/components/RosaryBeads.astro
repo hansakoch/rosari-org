@@ -55,10 +55,15 @@
       </filter>
     </defs>
 
+    <!-- ── Tilt the entire rosary ~15° clockwise (like the 📿 emoji) ─────
+         The whole composition rotates: loop goes upper-right, cross hangs
+         lower-left. Rotation center is the visual mid-point of the design. -->
+    <g transform="rotate(15, 300, 295)">
+
     <!-- Main loop cord — thin brown thread, continuous (like real prayer bead string) -->
     <ellipse
-      cx="300" cy="213"
-      rx="211" ry="195"
+      cx="300" cy="232"
+      rx="206" ry="180"
       fill="none"
       stroke="#6b4226"
       stroke-width="1.2"
@@ -67,12 +72,12 @@
     />
 
     <!-- Tail cord -->
-    <line x1="300" y1="410" x2="300" y2="521"
+    <line x1="300" y1="414" x2="300" y2="517"
       stroke="#6b4226" stroke-width="1.2" opacity="0.55"/>
 
     <!-- Crucifix (always rendered at tail bottom) -->
     <g id="bead-crucifix" class="bead-group bead-crucifix" data-bead-idx="0"
-       transform="translate(300,521)">
+       transform="translate(300,517)">
       <!-- Cross -->
       <rect x="-5.5" y="-22" width="11" height="42" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
       <rect x="-14" y="-8" width="28" height="9" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
@@ -88,7 +93,8 @@
     <!-- Bead groups (filled by JS) -->
     <g id="tail-beads"></g>
     <g id="loop-beads"></g>
-  </svg>
+
+    </g><!-- end rotation group -->
 
   <!-- Decade indicator: 5 glowing dots at bottom -->
   <div class="decade-track" aria-label="Decade progress">
@@ -103,7 +109,7 @@
 <script>
   import { getBeadPositions } from '../scripts/rosary-data.ts';
 
-  const CX = 300, CY = 213, RX = 213, RY = 197;
+  const CX = 300, CY = 232, RX = 208, RY = 182;
   const positions = getBeadPositions(CX, CY, RX, RY);
 
   function makeBead(
