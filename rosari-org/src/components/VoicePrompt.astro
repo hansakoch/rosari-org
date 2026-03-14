@@ -7,12 +7,6 @@
     <h1 class="vp-title">Rosari</h1>
     <p class="vp-subtitle">The Holy Rosary</p>
 
-    <div class="vp-mic-ring" id="mic-ring" aria-hidden="true">
-      <div class="vp-mic-core">🎙</div>
-    </div>
-
-    <p class="vp-status" id="voice-status">Preparing your rosary…</p>
-
     <p class="vp-question">What language would you like to pray the Rosary in?</p>
 
     <div class="vp-text-row">
@@ -27,7 +21,7 @@
       <button id="language-text-submit" class="vp-go-btn" aria-label="Begin">Begin</button>
     </div>
 
-    <p class="vp-hint">Say or type any language — your voice, your tongue, your prayer.</p>
+    <p class="vp-hint">Type any language — your tongue, your prayer.</p>
   </div>
 </div>
 
@@ -97,33 +91,6 @@
     letter-spacing: 0.08em;
     margin-top: -0.4rem;
   }
-
-  .vp-mic-ring {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    border: 2px solid var(--gold-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.4s, box-shadow 0.4s;
-  }
-
-  .vp-mic-ring.listening {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-glow), 0 0 0 8px transparent;
-    animation: pulseListening 1.5s ease-in-out infinite;
-  }
-
-  .vp-mic-core { font-size: 1.9rem; user-select: none; }
-
-  .vp-status {
-    font-size: 1rem;
-    color: var(--text-dim);
-    min-height: 2.2em;
-    transition: color 0.3s;
-  }
-
-  .vp-status.listening { color: var(--accent2); }
 
   .vp-question {
     font-family: 'Cinzel', serif;

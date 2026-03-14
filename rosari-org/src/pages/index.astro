@@ -76,9 +76,9 @@ import KaraokeText from '../components/KaraokeText.astro';
     buildRosarySequence, getLiturgicalSeason, getPrayerForLanguage
   } from '../scripts/rosary-data.ts';
   import { RosaryEngine } from '../scripts/rosary-engine.ts';
-  import { audioManager, ambientAudio } from '../scripts/audio-manager.ts';
+  import { audioManager } from '../scripts/audio-manager.ts';
   import { savePreferences, loadPreferences } from '../scripts/storage-manager.ts';
-  import { startLanguagePrompt, announcePrompt, parseVoiceInput } from '../scripts/voice-recognition.ts';
+  import { parseVoiceInput } from '../scripts/voice-recognition.ts';
 
   // ── State ──────────────────────────────────────────────────
   let engine: RosaryEngine | null = null;
@@ -87,7 +87,6 @@ import KaraokeText from '../components/KaraokeText.astro';
   let currentVoiceDesc = 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, slow, reverent';
   let isRunning = false;
   let isStopping = false;
-  let recognitionController: { stop: () => void } | null = null;
 
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
@@ -136,14 +135,6 @@ import KaraokeText from '../components/KaraokeText.astro';
       o.style.opacity = '0';
       setTimeout(() => { if (o) o.style.display = 'none'; }, 600);
     }
-  }
-
-  function updateVoiceStatus(text: string, listening = false): void {
-    const s = el('voice-status');
-    if (!s) return;
-    s.textContent = text;
-    s.classList.toggle('listening', listening);
-    el('mic-ring')?.classList.toggle('listening', listening);
   }
 
   // ── Karaoke: windowed display ──────────────────────────────
@@ -318,29 +309,12 @@ import KaraokeText from '../components/KaraokeText.astro';
   // ── Language selection ─────────────────────────────────────
   function startLanguageSelection(): void {
     showVoicePrompt();
-
-    setTimeout(() => {
-      announcePrompt('What language would you like to pray the Rosary in?', 'en-US');
-      updateVoiceStatus('Listening for your language…', true);
-    }, 800);
-
-    recognitionController = startLanguagePrompt(
-      (result) => handleLanguageSelected(result.language, result.languageCode, result.voiceDescription),
-      (err) => {
-        console.warn('Recognition error:', err);
-        updateVoiceStatus('Type your language below and press Begin.', false);
-      },
-      () => updateVoiceStatus('Listening…', true)
-    );
   }
 
   function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
     currentLanguage    = language;
     currentLanguageCode = languageCode;
     currentVoiceDesc   = voiceDesc || 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, reverent';
-
-    updateVoiceStatus(`✝ Praying in ${language}`, false);
-    recognitionController?.stop();
 
     savePreferences({
       language: currentLanguage,
@@ -463,25 +437,8 @@ import KaraokeText from '../components/KaraokeText.astro';
     btn.removeAttribute('disabled');
   });
 
-  // Voice commands (passive)
-  (() => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
-    const r = new SR();
-    r.continuous = true; r.lang = 'en-US';
-    r.onresult = (ev: any) => {
-      const cmd = ev.results[ev.results.length-1][0].transcript.toLowerCase();
-      if (cmd.includes('day mode')) applyTheme('day');
-      if (cmd.includes('night mode')) applyTheme('night');
-      if (cmd.includes('pause') && !cmd.includes('un')) { engine?.pause(); isRunning = false; audioManager.pause(); }
-      if (cmd.includes('resume') || cmd.includes('continue')) { engine?.resume(); isRunning = true; audioManager.resume(); playNextStep(); }
-    };
-    try { r.start(); } catch {}
-  })();
-
   document.addEventListener('click', () => {
     audioManager.unlock();
-    ambientAudio.start(0.05);
   }, { once: true });
 
   // ── Boot ────────────────────────────────────────────────────
@@ -509,7 +466,6 @@ import KaraokeText from '../components/KaraokeText.astro';
         audioManager.unlock(); // Must unlock AudioContext synchronously inside gesture
         el('resume-banner')?.remove();
         hideVoicePrompt();
-        ambientAudio.start(0.05);
         startRosary();
       });
       el('resume-no-btn')?.addEventListener('click', () => {
