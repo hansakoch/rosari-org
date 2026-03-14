@@ -318,7 +318,6 @@ import KaraokeText from '../components/KaraokeText.astro';
   // ── Language selection ─────────────────────────────────────
   function startLanguageSelection(): void {
     showVoicePrompt();
-    ambientAudio.start(0.05);
 
     setTimeout(() => {
       announcePrompt('What language would you like to pray the Rosary in?', 'en-US');
@@ -482,6 +481,7 @@ import KaraokeText from '../components/KaraokeText.astro';
 
   document.addEventListener('click', () => {
     audioManager.unlock();
+    ambientAudio.start(0.05);
   }, { once: true });
 
   // ── Boot ────────────────────────────────────────────────────
