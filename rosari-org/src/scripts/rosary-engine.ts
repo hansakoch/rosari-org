@@ -31,7 +31,7 @@ export class RosaryEngine {
   private currentStepIndex = 0;
   private engineState: EngineState = 'idle';
   private language = 'English';
-  private voiceDescription = 'elderly rural Piedmontese farmer, gravelly northern Italian drawl';
+  private voiceDescription = 'aged Catholic priest, deep gravelly male voice, slow and reverent';
   private wordIndex = 0;
   private listeners: StateChangeCallback[] = [];
 

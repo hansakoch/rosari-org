@@ -66,7 +66,7 @@ export function parseVoiceInput(transcript: string): ParsedVoiceInput {
   // Build voice description from voice part
   let voiceDescription = voicePart
     ? voicePart
-    : 'elderly rural Piedmontese farmer, gravelly northern Italian drawl';
+    : 'aged Catholic priest, deep gravelly male voice, slow and reverent';
 
   return {
     language: bestLang,

@@ -390,12 +390,14 @@ import KaraokeText from '../components/KaraokeText.astro';
   });
 
   el('restart-btn')?.addEventListener('click', () => {
+    audioManager.unlock(); // Re-unlock after long idle at finished screen
     el('finished-message')!.style.display = 'none';
     isRunning = false; isStopping = false; audioManager.stop();
     startRosary();
   });
 
   el('language-text-submit')?.addEventListener('click', () => {
+    audioManager.unlock(); // Must unlock in gesture — iOS may have consumed the { once } listener
     const input = el<HTMLInputElement>('language-text-input');
     const text = input?.value.trim();
     if (!text) return;

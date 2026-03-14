@@ -15,88 +15,13 @@ export interface TTSRequest {
 type WordCallback = (wordIndex: number) => void;
 type CompleteCallback = () => void;
 
-// ── Ambient Gregorian Chant via Web Audio ─────────────────
-
-export class AmbientAudio {
-  private ctx: AudioContext | null = null;
-  private gainNode: GainNode | null = null;
-  private oscillators: OscillatorNode[] = [];
-  private isPlaying = false;
-
-  start(volume = 0.06): void {
-    if (this.isPlaying) return;
-    try {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      this.gainNode = this.ctx.createGain();
-      this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 4);
-      this.gainNode.connect(this.ctx.destination);
-
-      // Choir pad: root + fifth + octave + minor third (sacred chord quality)
-      const baseFreq = 110; // A2
-      const harmonics = [
-        { freq: baseFreq,        gain: 0.5  },
-        { freq: baseFreq * 1.5,  gain: 0.3  }, // perfect fifth
-        { freq: baseFreq * 2,    gain: 0.25 }, // octave
-        { freq: baseFreq * 2.4,  gain: 0.15 }, // minor third approximation
-        { freq: baseFreq * 3,    gain: 0.1  }, // fifth+octave
-      ];
-
-      for (const h of harmonics) {
-        const osc = this.ctx.createOscillator();
-        const oscGain = this.ctx.createGain();
-
-        // LFO for breath-like vibrato
-        const lfo = this.ctx.createOscillator();
-        const lfoGain = this.ctx.createGain();
-        lfo.frequency.value = 0.12 + Math.random() * 0.08;
-        lfoGain.gain.value = h.freq * 0.003;
-        lfo.connect(lfoGain);
-        lfoGain.connect(osc.frequency);
-        lfo.start();
-
-        osc.type = 'sine';
-        osc.frequency.value = h.freq + (Math.random() - 0.5) * 0.5;
-        oscGain.gain.value = h.gain;
-        osc.connect(oscGain);
-        oscGain.connect(this.gainNode);
-        osc.start();
-        this.oscillators.push(osc);
-      }
-      this.isPlaying = true;
-    } catch (e) {
-      console.warn('Ambient audio init failed:', e);
-    }
-  }
-
-  fadeOut(duration = 3): void {
-    if (!this.gainNode || !this.ctx) return;
-    this.gainNode.gain.linearRampToValueAtTime(0, this.ctx.currentTime + duration);
-    setTimeout(() => this.stop(), duration * 1000);
-  }
-
-  stop(): void {
-    this.oscillators.forEach(osc => { try { osc.stop(); } catch {} });
-    this.oscillators = [];
-    this.isPlaying = false;
-    try { this.ctx?.close(); } catch {}
-    this.ctx = null;
-    this.gainNode = null;
-  }
-
-  setVolume(v: number): void {
-    if (this.gainNode && this.ctx) {
-      this.gainNode.gain.linearRampToValueAtTime(v, this.ctx.currentTime + 0.5);
-    }
-  }
-}
-
 // ── Main Audio Manager ─────────────────────────────────────
 
 export class AudioManager {
   private audioCtx: AudioContext | null = null;
   private isPaused = false;
   private currentSource: AudioBufferSourceNode | null = null;
+  private wordTimers: ReturnType<typeof setTimeout>[] = [];
 
   private getCtx(): AudioContext {
     if (!this.audioCtx || this.audioCtx.state === 'closed') {
@@ -217,9 +142,13 @@ export class AudioManager {
 
     this.currentSource = source;
 
+    // Clear any leftover word timers from a previous prayer
+    this.wordTimers.forEach(t => clearTimeout(t));
+    this.wordTimers = [];
+
     if (timings && timings.length > 0) {
       timings.forEach((timing, idx) => {
-        setTimeout(() => onWord(idx), timing.start * 1000);
+        this.wordTimers.push(setTimeout(() => onWord(idx), timing.start * 1000));
       });
     }
 
@@ -244,6 +173,9 @@ export class AudioManager {
 
   stop(): void {
     this.isPaused = false;
+    // Cancel pending word-timing callbacks so they don't ghost-update karaoke
+    this.wordTimers.forEach(t => clearTimeout(t));
+    this.wordTimers = [];
     try { this.currentSource?.stop(); } catch {}
     this.currentSource = null;
     this.audioCtx?.suspend();
@@ -279,7 +211,5 @@ export class AudioManager {
   }
 }
 
-// Singleton ambient audio
-export const ambientAudio = new AmbientAudio();
 // Singleton audio manager
 export const audioManager = new AudioManager();
