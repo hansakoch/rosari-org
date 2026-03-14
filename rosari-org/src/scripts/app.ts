@@ -453,7 +453,14 @@ document.addEventListener('DOMContentLoaded', () => {
   init().catch(console.error);
 });
 
-// Unlock AudioContext on first user gesture (iOS requires synchronous creation inside gesture)
+// Unlock audio on first user gesture — iOS requires both AudioContext and speechSynthesis
+// to be touched synchronously inside a gesture handler before any async code runs.
 document.addEventListener('click', () => {
   audioManager.unlock();
+  // Pre-trigger speechSynthesis with a silent utterance so the fallback path works on iOS
+  if (window.speechSynthesis) {
+    const silent = new SpeechSynthesisUtterance('');
+    silent.volume = 0;
+    window.speechSynthesis.speak(silent);
+  }
 }, { once: true });

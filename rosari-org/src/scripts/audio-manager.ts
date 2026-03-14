@@ -169,7 +169,9 @@ export class AudioManager {
     if (cached?.audioData) {
       try {
         const ctx = this.getCtx();
-        const buffer = await ctx.decodeAudioData(cached.audioData.slice(0));
+        const buffer = await new Promise<AudioBuffer>((res, rej) =>
+          ctx.decodeAudioData(cached.audioData!.slice(0), res, rej)
+        );
         return { audioBuffer: buffer, wordTimings: cached.wordTimings, usedFallback: false, duration: buffer.duration };
       } catch {}
     }
@@ -179,7 +181,9 @@ export class AudioManager {
     if (xaiData) {
       try {
         const ctx = this.getCtx();
-        const buffer = await ctx.decodeAudioData(xaiData.slice(0));
+        const buffer = await new Promise<AudioBuffer>((res, rej) =>
+          ctx.decodeAudioData(xaiData.slice(0), res, rej)
+        );
         await saveAudioCache({
           key: cacheKey,
           audioData: xaiData,
