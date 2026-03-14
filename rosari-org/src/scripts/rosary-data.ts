@@ -320,16 +320,17 @@ export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
 
 // ── Bead Layout Data ────────────────────────────────────────
 
-export function getBeadPositions(cx = 300, cy = 240, rx = 230, ry = 185): Array<{x: number; y: number; type: string; size: number}> {
+export function getBeadPositions(cx = 300, cy = 213, rx = 213, ry = 197): Array<{x: number; y: number; type: string; size: number}> {
   const positions: Array<{x: number; y: number; type: string; size: number}> = [];
 
-  const tailBottom = cy + ry;
-  positions.push({ x: cx, y: tailBottom + 108, type: 'crucifix',  size: 18 }); // 0
-  positions.push({ x: cx, y: tailBottom + 76,  type: 'of',        size: 14 }); // 1
-  positions.push({ x: cx, y: tailBottom + 53,  type: 'hm',        size: 11 }); // 2
-  positions.push({ x: cx, y: tailBottom + 33,  type: 'hm',        size: 11 }); // 3
-  positions.push({ x: cx, y: tailBottom + 14,  type: 'hm',        size: 11 }); // 4
-  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5
+  // Near-circular loop (rx≈ry) → looks like the 📿 emoji
+  const tailBottom = cy + ry; // = 410 for defaults
+  positions.push({ x: cx, y: tailBottom + 111, type: 'crucifix',  size: 18 }); // 0 → y=521
+  positions.push({ x: cx, y: tailBottom +  77, type: 'of',        size: 14 }); // 1 → y=487
+  positions.push({ x: cx, y: tailBottom +  58, type: 'hm',        size: 11 }); // 2 → y=468
+  positions.push({ x: cx, y: tailBottom +  40, type: 'hm',        size: 11 }); // 3 → y=450
+  positions.push({ x: cx, y: tailBottom +  20, type: 'hm',        size: 11 }); // 4 → y=430
+  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=410
 
   const GAP_DEG = 8;
   const arcTotal = 360 - GAP_DEG;

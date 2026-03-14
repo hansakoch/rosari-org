@@ -55,24 +55,24 @@
       </filter>
     </defs>
 
-    <!-- Main oval chain -->
+    <!-- Main loop cord — thin brown thread, continuous (like real prayer bead string) -->
     <ellipse
-      cx="300" cy="230"
-      rx="228" ry="183"
+      cx="300" cy="213"
+      rx="211" ry="195"
       fill="none"
-      stroke="var(--gold-dim)"
-      stroke-width="1.5"
-      stroke-dasharray="5,4"
-      opacity="0.35"
+      stroke="#6b4226"
+      stroke-width="1.2"
+      stroke-dasharray="none"
+      opacity="0.55"
     />
 
-    <!-- Tail chain -->
-    <line x1="300" y1="413" x2="300" y2="525"
-      stroke="var(--gold-dim)" stroke-width="1.5" opacity="0.35"/>
+    <!-- Tail cord -->
+    <line x1="300" y1="410" x2="300" y2="521"
+      stroke="#6b4226" stroke-width="1.2" opacity="0.55"/>
 
     <!-- Crucifix (always rendered at tail bottom) -->
     <g id="bead-crucifix" class="bead-group bead-crucifix" data-bead-idx="0"
-       transform="translate(300,530)">
+       transform="translate(300,521)">
       <!-- Cross -->
       <rect x="-5.5" y="-22" width="11" height="42" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
       <rect x="-14" y="-8" width="28" height="9" rx="2" fill="var(--gold-dim)" opacity="0.85"/>
@@ -103,7 +103,7 @@
 <script>
   import { getBeadPositions } from '../scripts/rosary-data.ts';
 
-  const CX = 300, CY = 230, RX = 228, RY = 183;
+  const CX = 300, CY = 213, RX = 213, RY = 197;
   const positions = getBeadPositions(CX, CY, RX, RY);
 
   function makeBead(
