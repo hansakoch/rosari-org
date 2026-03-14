@@ -117,7 +117,7 @@ export class AudioManager {
 
   async fetchXAIAudio(req: TTSRequest): Promise<ArrayBuffer> {
     const voicePrompt = `Speak as ${req.voiceDescription}, slow, clear, reverent. Language: ${req.language}.`;
-    const response = await fetch('/api/tts', {
+    const response = await fetch('/audio', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
