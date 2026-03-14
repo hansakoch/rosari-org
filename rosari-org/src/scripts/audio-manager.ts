@@ -108,9 +108,19 @@ export class AudioManager {
     return this.audioCtx;
   }
 
-  /** Call synchronously inside a user gesture to unlock AudioContext on iOS. */
+  /** Call synchronously inside a user gesture to unlock AudioContext on iOS.
+   *  iOS suspends the context unless real audio output happens during the gesture.
+   *  Playing a silent 1-frame buffer is the only reliable way to unlock it. */
   unlock(): void {
-    this.getCtx();
+    const ctx = this.getCtx();
+    try {
+      const silent = ctx.createBuffer(1, 1, ctx.sampleRate);
+      const src    = ctx.createBufferSource();
+      src.buffer   = silent;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch {}
+    ctx.resume().catch(() => {});
   }
 
   // ── xAI TTS via Cloudflare Pages Function proxy ──────────
@@ -119,7 +129,7 @@ export class AudioManager {
     const voicePrompt = `Speak as ${req.voiceDescription}, slow, clear, reverent. Language: ${req.language}.`;
     // Use AbortController for timeout — AbortSignal.timeout not in older Safari
     const abortCtrl = new AbortController();
-    const abortTimer = setTimeout(() => abortCtrl.abort(), 20000);
+    const abortTimer = setTimeout(() => abortCtrl.abort(), 45000); // 45s — covers translation + TTS on slow mobile
     let response: Response;
     try {
       response = await fetch('/audio', {
@@ -190,6 +200,13 @@ export class AudioManager {
 
   async playBuffer(buffer: AudioBuffer, onWord: WordCallback, timings?: WordTiming[]): Promise<void> {
     const ctx = this.getCtx();
+
+    // iOS suspends the context between the user gesture and async playback.
+    // Must resume before scheduling any audio or it plays silently.
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
