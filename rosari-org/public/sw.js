@@ -3,7 +3,7 @@
  * Provides offline support, asset caching, and background sync
  */
 
-const CACHE_NAME = 'rosari-v1';
+const CACHE_NAME = 'rosari-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -44,10 +44,11 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Don't intercept API calls or external resources
-  if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) {
-    return;
-  }
+  // Only cache GET requests — POST/PUT/etc. are never cacheable
+  if (request.method !== 'GET') return;
+
+  // Don't intercept external resources
+  if (url.origin !== self.location.origin) return;
 
   // Network-first for HTML (always get fresh rosary)
   if (request.mode === 'navigate' || request.headers.get('Accept')?.includes('text/html')) {
