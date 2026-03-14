@@ -30,8 +30,44 @@ const CORS = {
 function pickVoice(voiceDescription) {
   const desc = (voiceDescription || '').toLowerCase();
   if (desc.includes('woman') || desc.includes('female') || desc.includes('feminine')) return 'ara';
-  if (desc.includes('man')   || desc.includes('male')   || desc.includes('masculine')) return 'rex';
-  return 'sal';
+  // Broad set of male/elderly/religious descriptors
+  if (
+    desc.includes(' man') || desc.includes('male') || desc.includes('masculine') ||
+    desc.includes('priest') || desc.includes('father') || desc.includes('friar')  ||
+    desc.includes('monk')   || desc.includes('elderly') || desc.includes('aged')  ||
+    desc.includes('farmer') || desc.includes('grandfather') || desc.includes('old ')
+  ) return 'rex';
+  return 'rex'; // default to male voice for rosary
+}
+
+// ── Translate prayer text via xAI chat ─────────────────────────────────────
+
+async function translateText(text, targetLanguage, apiKey) {
+  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model: 'grok-3-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            `You are a Catholic liturgical translator. Translate the following Catholic prayer text into ${targetLanguage}. ` +
+            `Use traditional, formal, reverent language as found in Catholic prayer books. ` +
+            `Respond with ONLY the translated text — no notes, no quotation marks, no explanation.`,
+        },
+        { role: 'user', content: text },
+      ],
+      max_tokens: 2000,
+      temperature: 0.1,
+    }),
+  });
+  if (!response.ok) throw new Error(`Translation HTTP ${response.status}`);
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || text;
 }
 
 // ── SHA-256 cache key ──────────────────────────────────────────────────────
@@ -187,11 +223,24 @@ export async function onRequestPost(context) {
     }
   }
 
+  // ── Translate if not English or Latin ───────────────────────────────────
+
+  const isEnglish = /^en/i.test(language_code);
+  const isLatin   = language_code === 'la';
+  let ttsText = text;
+  if (!isEnglish && !isLatin) {
+    try {
+      ttsText = await translateText(text, language, apiKey);
+    } catch (e) {
+      console.warn('[tts] translation failed, falling back to source text:', e.message);
+    }
+  }
+
   // ── Call xAI TTS ────────────────────────────────────────────────────────
 
   let mp3Buffer;
   try {
-    mp3Buffer = await xaiTTS(text, language_code, voice_description, apiKey);
+    mp3Buffer = await xaiTTS(ttsText, language_code, voice_description, apiKey);
   } catch (err) {
     console.error('[tts] xAI error:', err.message);
     return new Response(

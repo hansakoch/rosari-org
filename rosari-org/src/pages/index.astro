@@ -84,7 +84,7 @@ import KaraokeText from '../components/KaraokeText.astro';
   let engine: RosaryEngine | null = null;
   let currentLanguageCode = 'en-US';
   let currentLanguage = 'English';
-  let currentVoiceDesc = 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, slow, reverent';
+  let currentVoiceDesc = 'aged Catholic priest, deep gravelly male voice, slow and reverent';
   let isRunning = false;
   let isStopping = false;
 
@@ -314,7 +314,7 @@ import KaraokeText from '../components/KaraokeText.astro';
   function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
     currentLanguage    = language;
     currentLanguageCode = languageCode;
-    currentVoiceDesc   = voiceDesc || 'elderly rural Piedmontese farmer, gravelly northern Italian drawl, reverent';
+    currentVoiceDesc   = voiceDesc || 'aged Catholic priest, deep gravelly male voice, slow and reverent';
 
     savePreferences({
       language: currentLanguage,
@@ -502,6 +502,7 @@ import KaraokeText from '../components/KaraokeText.astro';
     padding: 0.4rem 0.8rem;
     border-bottom: 1px solid var(--border-dim);
     background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     flex-shrink: 0;
     gap: 0.5rem;
@@ -599,6 +600,7 @@ import KaraokeText from '../components/KaraokeText.astro';
     flex-shrink: 0;
     border-top: 1px solid var(--border-dim);
     background: rgba(10, 9, 6, 0.6);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;

@@ -117,18 +117,26 @@ export class AudioManager {
 
   async fetchXAIAudio(req: TTSRequest): Promise<ArrayBuffer> {
     const voicePrompt = `Speak as ${req.voiceDescription}, slow, clear, reverent. Language: ${req.language}.`;
-    const response = await fetch('/audio', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: req.text,
-        language: req.language,
-        language_code: req.languageCode,
-        voice_description: req.voiceDescription,
-        system_prompt: voicePrompt,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
+    // Use AbortController for timeout — AbortSignal.timeout not in older Safari
+    const abortCtrl = new AbortController();
+    const abortTimer = setTimeout(() => abortCtrl.abort(), 20000);
+    let response: Response;
+    try {
+      response = await fetch('/audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: req.text,
+          language: req.language,
+          language_code: req.languageCode,
+          voice_description: req.voiceDescription,
+          system_prompt: voicePrompt,
+        }),
+        signal: abortCtrl.signal,
+      });
+    } finally {
+      clearTimeout(abortTimer);
+    }
 
     if (!response.ok) {
       let reason = `HTTP ${response.status}`;
@@ -233,7 +241,23 @@ export class AudioManager {
     onComplete: CompleteCallback
   ): Promise<void> {
     const { buffer, wordTimings } = await this.generateAudio(req);
-    await this.playBuffer(buffer, onWord, wordTimings);
+
+    // xAI TTS doesn't return word timings; generate evenly-spaced fallback
+    // so karaoke highlighting advances as the audio plays.
+    let timings = wordTimings;
+    if (!timings || timings.length === 0) {
+      const words = req.text.trim().split(/\s+/).filter(Boolean);
+      if (words.length > 0) {
+        const dur = buffer.duration;
+        timings = words.map((w, i) => ({
+          word:  w,
+          start: (i / words.length) * dur,
+          end:   ((i + 1) / words.length) * dur,
+        }));
+      }
+    }
+
+    await this.playBuffer(buffer, onWord, timings);
     onComplete();
   }
 }
