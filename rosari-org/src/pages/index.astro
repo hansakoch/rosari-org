@@ -247,11 +247,14 @@ import KaraokeText from '../components/KaraokeText.astro';
     const isMystery = step.prayer === 'mysteryAnnounce';
 
     let ttsText: string;
+    let displayTitle: string;
     if (isMystery) {
       ttsText = `${state.currentPrayerTitle}. ${state.currentMeditationText}`;
+      displayTitle = state.currentPrayerTitle;
     } else {
       const localized = getPrayerText(step.prayer);
       ttsText = localized.text || state.currentPrayerText;
+      displayTitle = localized.title || state.currentPrayerTitle;
     }
 
     const prayerKey = `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`;
@@ -270,6 +273,11 @@ import KaraokeText from '../components/KaraokeText.astro';
           voiceDescription: currentVoiceDesc,
           prayerKey,
         },
+        // Called as soon as audio is ready — update karaoke to the translated text
+        (translatedText: string) => {
+          updateKaraoke(translatedText, 0, displayTitle);
+          if (loadingEl) loadingEl.style.display = 'none';
+        },
         (wordIdx: number) => {
           engine?.setWordIndex(wordIdx);
           renderState(engine!.getState());
@@ -278,6 +286,8 @@ import KaraokeText from '../components/KaraokeText.astro';
       );
     } catch (err) {
       const msg = (err as Error).message || String(err);
+      // Aborts are intentional (stop/skip/pause) — not errors
+      if (/abort/i.test(msg)) return;
       console.error('[audio] playStep failed:', msg);
       isRunning = false;
       const errEl = document.getElementById('audio-error');
@@ -347,11 +357,19 @@ import KaraokeText from '../components/KaraokeText.astro';
     if (!engine) { startRosary(); return; }
     const state = engine.getState();
     if (state.engineState === 'playing') {
-      engine.pause(); audioManager.pause(); isRunning = false;
+      // Pause: stop audio immediately (cancels in-flight fetch + clears timers → karaoke freezes)
+      isStopping = true;
+      audioManager.stop();
+      engine.pause();
+      isRunning = false;
+      isStopping = false;
       renderState(engine.getState());
     } else if (state.engineState === 'paused') {
-      engine.resume(); audioManager.resume(); isRunning = true;
-      renderState(engine.getState()); playNextStep();
+      // Resume: replay the current prayer from the start (no double-audio risk)
+      engine.resume();
+      isRunning = true;
+      renderState(engine.getState());
+      playNextStep();
     } else {
       isRunning = true; engine.start(); renderState(engine.getState()); playNextStep();
     }

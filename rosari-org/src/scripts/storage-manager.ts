@@ -16,6 +16,7 @@ interface AudioCache {
   key: string;
   audioData: ArrayBuffer;
   text: string;
+  translatedText?: string;  // server's translated text for karaoke display
   duration: number;
   timestamp: number;
   wordTimings?: WordTiming[];

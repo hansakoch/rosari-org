@@ -12,29 +12,29 @@ export interface TTSRequest {
   prayerKey: string;
 }
 
-type WordCallback = (wordIndex: number) => void;
-type CompleteCallback = () => void;
+type WordCallback      = (wordIndex: number) => void;
+type CompleteCallback  = () => void;
+type TextCallback      = (translatedText: string) => void;
 
 // ── Main Audio Manager ─────────────────────────────────────
 
 export class AudioManager {
   private audioCtx: AudioContext | null = null;
-  private isPaused = false;
   private currentSource: AudioBufferSourceNode | null = null;
   private wordTimers: ReturnType<typeof setTimeout>[] = [];
+
+  /** Each call to playStep creates a fresh controller here.
+   *  stop() aborts it — cancels in-flight fetch AND stops playback. */
+  private stopCtrl: AbortController | null = null;
 
   private getCtx(): AudioContext {
     if (!this.audioCtx || this.audioCtx.state === 'closed') {
       this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
-    if (this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
-    }
     return this.audioCtx;
   }
 
   /** Call synchronously inside a user gesture to unlock AudioContext on iOS.
-   *  iOS suspends the context unless real audio output happens during the gesture.
    *  Playing a silent 1-frame buffer is the only reliable way to unlock it. */
   unlock(): void {
     const ctx = this.getCtx();
@@ -50,11 +50,12 @@ export class AudioManager {
 
   // ── xAI TTS via Cloudflare Pages Function proxy ──────────
 
-  async fetchXAIAudio(req: TTSRequest): Promise<ArrayBuffer> {
-    const voicePrompt = `Speak as ${req.voiceDescription}, slow, clear, reverent. Language: ${req.language}.`;
-    // Use AbortController for timeout — AbortSignal.timeout not in older Safari
-    const abortCtrl = new AbortController();
-    const abortTimer = setTimeout(() => abortCtrl.abort(), 45000); // 45s — covers translation + TTS on slow mobile
+  async fetchXAIAudio(req: TTSRequest, signal: AbortSignal): Promise<{ data: ArrayBuffer; translatedText?: string }> {
+    // Chain a 45-second timeout onto the caller's abort signal
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 45000);
+    signal.addEventListener('abort', () => ctrl.abort(), { once: true });
+
     let response: Response;
     try {
       response = await fetch('/audio', {
@@ -65,12 +66,11 @@ export class AudioManager {
           language: req.language,
           language_code: req.languageCode,
           voice_description: req.voiceDescription,
-          system_prompt: voicePrompt,
         }),
-        signal: abortCtrl.signal,
+        signal: ctrl.signal,
       });
     } finally {
-      clearTimeout(abortTimer);
+      clearTimeout(timer);
     }
 
     if (!response.ok) {
@@ -79,12 +79,21 @@ export class AudioManager {
       throw new Error(`xAI TTS failed: ${reason}`);
     }
 
-    return response.arrayBuffer();
+    // Server returns the translated text in this header (percent-encoded)
+    const raw = response.headers.get('X-Translated-Text');
+    const translatedText = raw ? decodeURIComponent(raw) : undefined;
+
+    const data = await response.arrayBuffer();
+    return { data, translatedText };
   }
 
   // ── Generate and decode audio for a prayer step ──────────
 
-  async generateAudio(req: TTSRequest): Promise<{ buffer: AudioBuffer; wordTimings?: WordTiming[] }> {
+  async generateAudio(req: TTSRequest, signal: AbortSignal): Promise<{
+    buffer: AudioBuffer;
+    wordTimings?: WordTiming[];
+    translatedText?: string;
+  }> {
     const cacheKey = buildCacheKey(req.prayerKey, req.language, req.voiceDescription);
 
     // Try local cache first
@@ -95,85 +104,96 @@ export class AudioManager {
         const buffer = await new Promise<AudioBuffer>((res, rej) =>
           ctx.decodeAudioData(cached.audioData!.slice(0), res, rej)
         );
-        return { buffer, wordTimings: cached.wordTimings };
+        return { buffer, wordTimings: cached.wordTimings, translatedText: cached.translatedText };
       } catch {
         // Cache entry corrupt — fall through to API
       }
     }
 
-    // Fetch from xAI (throws on failure)
-    const xaiData = await this.fetchXAIAudio(req);
+    // Fetch from xAI (throws on network error or abort)
+    const { data: xaiData, translatedText } = await this.fetchXAIAudio(req, signal);
 
     const ctx = this.getCtx();
     const buffer = await new Promise<AudioBuffer>((res, rej) =>
       ctx.decodeAudioData(xaiData.slice(0), res, rej)
     );
 
-    // Persist to cache (non-blocking)
+    // Persist to local IndexedDB cache (non-blocking)
     saveAudioCache({
       key: cacheKey,
       audioData: xaiData,
       text: req.text,
+      translatedText,
       duration: buffer.duration,
       timestamp: Date.now(),
     }).catch(() => {});
 
-    return { buffer };
+    return { buffer, translatedText };
   }
 
-  // ── Play audio buffer ─────────────────────────────────────
+  // ── Play a decoded AudioBuffer ────────────────────────────
 
-  async playBuffer(buffer: AudioBuffer, onWord: WordCallback, timings?: WordTiming[]): Promise<void> {
+  private async playBuffer(
+    buffer: AudioBuffer,
+    signal: AbortSignal,
+    onWord: WordCallback,
+    timings?: WordTiming[]
+  ): Promise<void> {
+    if (signal.aborted) return;
+
     const ctx = this.getCtx();
-
-    // iOS suspends the context between the user gesture and async playback.
-    // Must resume before scheduling any audio or it plays silently.
-    if (ctx.state === 'suspended') {
-      await ctx.resume();
-    }
+    // iOS suspends the context between user gesture and async playback
+    if (ctx.state === 'suspended') await ctx.resume();
+    if (signal.aborted) return;
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = 1.0;
-    source.connect(gainNode);
-    gainNode.connect(ctx.destination);
+    const gain = ctx.createGain();
+    gain.gain.value = 1.0;
+    source.connect(gain);
+    gain.connect(ctx.destination);
 
     this.currentSource = source;
 
-    // Clear any leftover word timers from a previous prayer
+    // Clear any leftover timers from the previous prayer
     this.wordTimers.forEach(t => clearTimeout(t));
     this.wordTimers = [];
 
     if (timings && timings.length > 0) {
       timings.forEach((timing, idx) => {
-        this.wordTimers.push(setTimeout(() => onWord(idx), timing.start * 1000));
+        this.wordTimers.push(
+          setTimeout(() => { if (!signal.aborted) onWord(idx); }, timing.start * 1000)
+        );
       });
     }
 
     return new Promise((resolve) => {
+      // Abort handler: cancel timers, stop source, resolve cleanly
+      signal.addEventListener('abort', () => {
+        this.wordTimers.forEach(t => clearTimeout(t));
+        this.wordTimers = [];
+        try { source.stop(); } catch {}
+        this.currentSource = null;
+        resolve();
+      }, { once: true });
+
       source.onended = () => {
         this.currentSource = null;
         resolve();
       };
+
       source.start(0);
     });
   }
 
-  pause(): void {
-    this.isPaused = true;
-    this.audioCtx?.suspend();
-  }
+  // ── Public controls ───────────────────────────────────────
 
-  resume(): void {
-    this.isPaused = false;
-    this.audioCtx?.resume();
-  }
-
+  /** Stop all audio and cancel any in-flight network request. */
   stop(): void {
-    this.isPaused = false;
-    // Cancel pending word-timing callbacks so they don't ghost-update karaoke
+    // Abort in-flight fetch + stop playback via the shared signal
+    this.stopCtrl?.abort();
+    this.stopCtrl = null;
+    // Safety-net: also clear timers and source directly
     this.wordTimers.forEach(t => clearTimeout(t));
     this.wordTimers = [];
     try { this.currentSource?.stop(); } catch {}
@@ -181,21 +201,31 @@ export class AudioManager {
     this.audioCtx?.suspend();
   }
 
-  // ── Play a prayer step — xAI only, no fallback ───────────
+  // ── Play a prayer step — fetches, decodes, and plays ─────
 
   async playStep(
     _text: string,
     req: TTSRequest,
+    onTranslatedText: TextCallback,
     onWord: WordCallback,
-    onComplete: CompleteCallback
+    _onComplete: CompleteCallback
   ): Promise<void> {
-    const { buffer, wordTimings } = await this.generateAudio(req);
+    // Cancel any previous playback/fetch immediately
+    this.stopCtrl?.abort();
+    const ctrl = new AbortController();
+    this.stopCtrl = ctrl;
 
-    // xAI TTS doesn't return word timings; generate evenly-spaced fallback
-    // so karaoke highlighting advances as the audio plays.
+    const { buffer, wordTimings, translatedText } = await this.generateAudio(req, ctrl.signal);
+
+    if (ctrl.signal.aborted) return; // stopped while loading
+
+    // Notify caller of the actual text being spoken (may differ from English source)
+    onTranslatedText(translatedText || req.text);
+
+    // Build evenly-spaced word timings if xAI didn't return per-word timestamps
     let timings = wordTimings;
     if (!timings || timings.length === 0) {
-      const words = req.text.trim().split(/\s+/).filter(Boolean);
+      const words = (translatedText || req.text).trim().split(/\s+/).filter(Boolean);
       if (words.length > 0) {
         const dur = buffer.duration;
         timings = words.map((w, i) => ({
@@ -206,8 +236,7 @@ export class AudioManager {
       }
     }
 
-    await this.playBuffer(buffer, onWord, timings);
-    onComplete();
+    await this.playBuffer(buffer, ctrl.signal, onWord, timings);
   }
 }
 

@@ -20,9 +20,11 @@ const SAMPLE_RATE   = 24000;
 const BIT_RATE      = 128000;
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Origin':   '*',
+  'Access-Control-Allow-Methods':  'POST, OPTIONS',
+  'Access-Control-Allow-Headers':  'Content-Type',
+  // Allow client JS to read these response headers
+  'Access-Control-Expose-Headers': 'X-Translated-Text, X-TTS-Provider, X-Voice, X-Language',
 };
 
 // ── Pick xAI voice ─────────────────────────────────────────────────────────
@@ -206,8 +208,12 @@ export async function onRequestPost(context) {
 
   if (kv) {
     try {
-      const { value: cached } = await kv.getWithMetadata(cacheKey, { type: 'arrayBuffer' });
+      const { value: cached, metadata } = await kv.getWithMetadata(cacheKey, { type: 'arrayBuffer' });
       if (cached && cached.byteLength > 100) {
+        const extraHeaders = {};
+        if (metadata?.translatedText) {
+          extraHeaders['X-Translated-Text'] = metadata.translatedText;
+        }
         return new Response(cached, {
           status: 200,
           headers: {
@@ -215,6 +221,7 @@ export async function onRequestPost(context) {
             'Cache-Control':  'public, max-age=31536000, immutable',
             'X-TTS-Provider': 'cache',
             ...CORS,
+            ...extraHeaders,
           },
         });
       }
@@ -251,20 +258,30 @@ export async function onRequestPost(context) {
 
   // ── Cache + respond ─────────────────────────────────────────────────────
 
+  // Percent-encode translated text for the response header
+  // (prayer texts can contain commas, apostrophes, etc.)
+  const encodedTranslation = encodeURIComponent(ttsText).substring(0, 3000);
+
   if (kv) {
     kv.put(cacheKey, mp3Buffer, {
-      metadata: { language, voice: pickVoice(voice_description), cachedAt: new Date().toISOString() },
+      metadata: {
+        language,
+        voice: pickVoice(voice_description),
+        translatedText: encodedTranslation,
+        cachedAt: new Date().toISOString(),
+      },
     }).catch(e => console.warn('[tts] KV write error:', e.message));
   }
 
   return new Response(mp3Buffer, {
     status: 200,
     headers: {
-      'Content-Type':   'audio/mpeg',
-      'Cache-Control':  'public, max-age=31536000, immutable',
-      'X-TTS-Provider': 'xai-tts',
-      'X-Voice':        pickVoice(voice_description),
-      'X-Language':     language,
+      'Content-Type':        'audio/mpeg',
+      'Cache-Control':       'public, max-age=31536000, immutable',
+      'X-TTS-Provider':      'xai-tts',
+      'X-Voice':             pickVoice(voice_description),
+      'X-Language':          language,
+      'X-Translated-Text':   encodedTranslation,
       ...CORS,
     },
   });
