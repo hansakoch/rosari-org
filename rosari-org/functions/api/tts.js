@@ -1,34 +1,23 @@
 /**
- * tts.js — Cloudflare Pages Function: xAI Voice Agent API proxy
+ * tts.js — Cloudflare Pages Function: xAI TTS proxy
  *
- * xAI's voice API uses the Realtime WebSocket protocol (NOT a REST endpoint):
- *   wss://api.x.ai/v1/realtime?model=grok-2-audio
+ * xAI TTS WebSocket API
+ *   wss://api.x.ai/v1/tts?language=<BCP47>&voice=<name>&codec=mp3&sample_rate=24000&bit_rate=128000
  *
  * Flow:
- *   1. Check AUDIO_CACHE KV → hit: return cached WAV (zero xAI credits)
- *   2. Open WebSocket to xAI Realtime API
- *   3. Configure session (voice, format, instructions)
- *   4. Send text → receive PCM16 audio delta chunks
- *   5. Wrap PCM16 in WAV container → return to browser
- *   6. Store in KV cache for next time
+ *   Client → server:  {"type":"text.delta","delta":"..."} then {"type":"text.done"}
+ *   Server → client:  {"type":"audio.delta","delta":"<base64 MP3 bytes>"} …then {"type":"audio.done"}
  *
- * Available voices:
- *   Ara  — female, warm
- *   Rex  — male, authoritative and strong        ← rosary default
- *   Sal  — neutral, smooth
- *   Eve  — female, energetic
- *   Leo  — male, authoritative, strong
+ * Available voices: ara (female warm) | rex (male reverent) | sal (neutral) | eve (female) | leo (male)
  *
- * KV binding:  AUDIO_CACHE
- * Env var:     XAI_API_KEY
+ * KV binding:  AUDIO_CACHE (optional — cache MP3 bytes)
+ * Env var:     XAI_API_KEY (required)
  */
 
-const CACHE_VERSION = 'v3-ws';
-const XAI_REALTIME  = 'https://api.x.ai/v1/realtime'; // Worker upgrades to wss://
-const XAI_MODEL     = 'grok-2-audio';
+const CACHE_VERSION = 'v4-mp3';
+const XAI_TTS_URL   = 'https://api.x.ai/v1/tts';   // Worker upgrades to wss://
 const SAMPLE_RATE   = 24000;
-const NUM_CHANNELS  = 1;
-const BITS          = 16;
+const BIT_RATE      = 128000;
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -36,14 +25,13 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// ── Pick xAI voice based on language / tone ────────────────────────────────
+// ── Pick xAI voice ─────────────────────────────────────────────────────────
 
-function pickVoice(language, voiceDescription) {
-  const lang = (language || '').toLowerCase();
+function pickVoice(voiceDescription) {
   const desc = (voiceDescription || '').toLowerCase();
-  if (desc.includes('woman') || desc.includes('female') || desc.includes('feminine')) return 'Ara';
-  if (desc.includes('man') || desc.includes('male') || desc.includes('masculine')) return 'Rex';
-  return 'Sal'; // neutral default — works for all languages
+  if (desc.includes('woman') || desc.includes('female') || desc.includes('feminine')) return 'ara';
+  if (desc.includes('man')   || desc.includes('male')   || desc.includes('masculine')) return 'rex';
+  return 'sal';
 }
 
 // ── SHA-256 cache key ──────────────────────────────────────────────────────
@@ -60,182 +48,89 @@ async function buildCacheKey(text, language, voiceDescription) {
   return `audio::${hex}`;
 }
 
-// ── Build WAV container from raw PCM16 ──────────────────────────────────────
-// AudioContext.decodeAudioData() needs a container; WAV is simplest.
+// ── xAI TTS via WebSocket ─────────────────────────────────────────────────
 
-function pcm16ToWav(pcmBytes) {
-  const dataLen = pcmBytes.byteLength;
-  const header  = new ArrayBuffer(44);
-  const v       = new DataView(header);
-  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i)); };
+async function xaiTTS(text, languageCode, voiceDescription, apiKey) {
+  const voice = pickVoice(voiceDescription);
+  // xAI uses BCP-47 base codes: 'en', 'pt', 'zh' etc. or full codes like 'pt-BR'
+  const lang = (languageCode || 'en').replace('_', '-');
 
-  writeStr(0,  'RIFF');
-  v.setUint32(4,  36 + dataLen, true);
-  writeStr(8,  'WAVE');
-  writeStr(12, 'fmt ');
-  v.setUint32(16, 16, true);                              // subchunk1 size
-  v.setUint16(20, 1,  true);                              // PCM
-  v.setUint16(22, NUM_CHANNELS, true);
-  v.setUint32(24, SAMPLE_RATE, true);
-  v.setUint32(28, SAMPLE_RATE * NUM_CHANNELS * BITS / 8, true);
-  v.setUint16(32, NUM_CHANNELS * BITS / 8, true);
-  v.setUint16(34, BITS, true);
-  writeStr(36, 'data');
-  v.setUint32(40, dataLen, true);
+  const url = new URL(XAI_TTS_URL);
+  url.searchParams.set('language',    lang);
+  url.searchParams.set('voice',       voice);
+  url.searchParams.set('codec',       'mp3');
+  url.searchParams.set('sample_rate', String(SAMPLE_RATE));
+  url.searchParams.set('bit_rate',    String(BIT_RATE));
 
-  // Concatenate header + PCM
-  const wav = new Uint8Array(44 + dataLen);
-  wav.set(new Uint8Array(header), 0);
-  wav.set(new Uint8Array(pcmBytes), 44);
-  return wav.buffer;
-}
-
-// ── xAI Realtime WebSocket TTS ─────────────────────────────────────────────
-
-async function xaiVoiceTTS(text, language, languageCode, voiceDescription, apiKey) {
-  const voice = pickVoice(language, voiceDescription);
-
-  const systemInstructions = [
-    `You are a deeply reverent Catholic lector praying the Holy Rosary.`,
-    `Speak in ${language} (${languageCode}).`,
-    `Voice character: ${voiceDescription}.`,
-    `Pray with great solemnity, very slowly and clearly.`,
-    `Pause naturally at commas and fully at periods.`,
-    `Never rush — this is sacred prayer, not narration.`,
-  ].join(' ');
-
-  // Upgrade HTTP → WebSocket
-  const wsRes = await fetch(`${XAI_REALTIME}?model=${XAI_MODEL}`, {
+  // Cloudflare Workers outbound WebSocket upgrade via fetch()
+  const wsRes = await fetch(url.toString(), {
     headers: {
-      'Authorization':            `Bearer ${apiKey}`,
-      'Upgrade':                  'websocket',
-      'Connection':               'Upgrade',
-      'Sec-WebSocket-Version':    '13',
-      'Sec-WebSocket-Key':        btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
+      'Authorization':         `Bearer ${apiKey}`,
+      'Upgrade':               'websocket',
+      'Connection':            'Upgrade',
+      'Sec-WebSocket-Version': '13',
+      'Sec-WebSocket-Key':     btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
     },
   });
 
-  const ws = wsRes.webSocket;
-  if (!ws) {
-    throw new Error(`WebSocket upgrade failed (HTTP ${wsRes.status})`);
+  if (!wsRes.webSocket) {
+    let detail = `HTTP ${wsRes.status}`;
+    try { const t = await wsRes.text(); if (t) detail += `: ${t.slice(0, 200)}`; } catch {}
+    throw new Error(`WebSocket upgrade failed — ${detail}`);
   }
+
+  const ws = wsRes.webSocket;
   ws.accept();
 
   return new Promise((resolve, reject) => {
-    const pcmChunks = [];         // decoded base64 → raw PCM bytes per chunk
-    let sessionReady = false;
-    let responseDone = false;
+    const chunks = [];
+    let done = false;
 
     const timer = setTimeout(() => {
       try { ws.close(); } catch {}
-      reject(new Error('xAI TTS timeout (25s)'));
-    }, 25000);
+      reject(new Error('xAI TTS timeout (30s)'));
+    }, 30000);
 
     const finish = (err) => {
       clearTimeout(timer);
       try { ws.close(); } catch {}
       if (err) { reject(err); return; }
 
-      // Assemble all PCM chunks
-      const totalLen = pcmChunks.reduce((s, c) => s + c.byteLength, 0);
-      const combined = new Uint8Array(totalLen);
+      const totalLen = chunks.reduce((s, c) => s + c.byteLength, 0);
+      if (totalLen < 100) { reject(new Error('xAI returned empty audio')); return; }
+
+      const out = new Uint8Array(totalLen);
       let offset = 0;
-      for (const chunk of pcmChunks) {
-        combined.set(new Uint8Array(chunk), offset);
-        offset += chunk.byteLength;
-      }
-
-      if (totalLen < 400) {
-        reject(new Error('xAI returned empty audio'));
-        return;
-      }
-
-      resolve(pcm16ToWav(combined.buffer));
+      for (const c of chunks) { out.set(new Uint8Array(c), offset); offset += c.byteLength; }
+      resolve(out.buffer);
     };
 
     ws.addEventListener('message', (event) => {
       let msg;
       try { msg = JSON.parse(event.data); } catch { return; }
 
-      switch (msg.type) {
-
-        case 'session.created':
-          // Configure the session: voice, output format, instructions
-          ws.send(JSON.stringify({
-            type: 'session.update',
-            session: {
-              voice,
-              instructions: systemInstructions,
-              output_audio_format: 'pcm16',
-              // Disable input audio — we only need TTS
-              input_audio_transcription: null,
-              turn_detection: null,
-            },
-          }));
-          sessionReady = true;
-
-          // Create the text message
-          ws.send(JSON.stringify({
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [{ type: 'input_text', text }],
-            },
-          }));
-
-          // Request audio response
-          ws.send(JSON.stringify({
-            type: 'response.create',
-            response: {
-              modalities:           ['audio'],
-              output_audio_format:  'pcm16',
-              // Don't include text in response — audio only
-            },
-          }));
-          break;
-
-        case 'response.audio.delta':
-          if (msg.delta) {
-            // Decode base64 → ArrayBuffer
-            const raw = atob(msg.delta);
-            const bytes = new Uint8Array(raw.length);
-            for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-            pcmChunks.push(bytes.buffer);
-          }
-          break;
-
-        case 'response.audio.done':
-        case 'response.done':
-          if (!responseDone) {
-            responseDone = true;
-            finish(null);
-          }
-          break;
-
-        case 'error':
-          finish(new Error(msg.error?.message || JSON.stringify(msg.error) || 'xAI error'));
-          break;
-
-        default:
-          // Ignore other message types (session.updated, rate_limits.updated, etc.)
-          break;
+      if (msg.type === 'audio.delta' && msg.delta) {
+        const raw = atob(msg.delta);
+        const b   = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) b[i] = raw.charCodeAt(i);
+        chunks.push(b.buffer);
+      } else if (msg.type === 'audio.done') {
+        if (!done) { done = true; finish(null); }
+      } else if (msg.type === 'error') {
+        finish(new Error(msg.message || JSON.stringify(msg)));
       }
     });
 
-    ws.addEventListener('error', (err) => {
-      finish(new Error(String(err)));
-    });
+    ws.addEventListener('error',  (e)  => finish(new Error(`WebSocket error: ${String(e)}`)));
+    ws.addEventListener('close',  (e)  => { if (!done) finish(new Error(`WebSocket closed early: ${e.code} ${e.reason}`)); });
 
-    ws.addEventListener('close', (event) => {
-      if (!responseDone) {
-        finish(new Error(`WebSocket closed early: ${event.code} ${event.reason}`));
-      }
-    });
+    // Send text
+    ws.send(JSON.stringify({ type: 'text.delta', delta: text }));
+    ws.send(JSON.stringify({ type: 'text.done'               }));
   });
 }
 
-// ── POST handler ──────────────────────────────────────────────────────────────
+// ── POST handler ──────────────────────────────────────────────────────────
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -244,102 +139,93 @@ export async function onRequestPost(context) {
   try { body = await request.json(); }
   catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', ...CORS },
+      status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
     });
   }
 
   const {
     text,
-    language       = 'English',
-    language_code  = 'en-US',
-    voice_description = 'elderly male, gravelly voice, slow and reverent',
+    language          = 'English',
+    language_code     = 'en',
+    voice_description = 'elderly male, gravelly, slow and reverent',
   } = body;
 
   if (!text || typeof text !== 'string' || text.trim().length === 0 || text.length > 8000) {
     return new Response(JSON.stringify({ error: 'Invalid text (1–8000 chars required)' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', ...CORS },
+      status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
     });
   }
 
   const apiKey = env.XAI_API_KEY;
   if (!apiKey) {
-    return ttsUnavailable(language, text, 'XAI_API_KEY not configured');
+    return new Response(JSON.stringify({ error: 'XAI_API_KEY not configured on server' }), {
+      status: 503, headers: { 'Content-Type': 'application/json', ...CORS },
+    });
   }
 
-  // ── 1. KV cache check ─────────────────────────────────────────────────────
+  // ── KV cache check ──────────────────────────────────────────────────────
 
   const cacheKey = await buildCacheKey(text, language, voice_description);
   const kv = env.AUDIO_CACHE;
 
   if (kv) {
     try {
-      const { value: cached, metadata } = await kv.getWithMetadata(cacheKey, { type: 'arrayBuffer' });
-      if (cached && cached.byteLength > 500) {
+      const { value: cached } = await kv.getWithMetadata(cacheKey, { type: 'arrayBuffer' });
+      if (cached && cached.byteLength > 100) {
         return new Response(cached, {
           status: 200,
           headers: {
-            'Content-Type': 'audio/wav',
-            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Content-Type':   'audio/mpeg',
+            'Cache-Control':  'public, max-age=31536000, immutable',
             'X-TTS-Provider': 'cache',
-            'X-Language': metadata?.language || language,
             ...CORS,
           },
         });
       }
     } catch (e) {
-      console.warn('[tts] KV read:', e.message);
+      console.warn('[tts] KV read error:', e.message);
     }
   }
 
-  // ── 2. Call xAI Voice Agent API ───────────────────────────────────────────
+  // ── Call xAI TTS ────────────────────────────────────────────────────────
 
-  let wavBuffer;
+  let mp3Buffer;
   try {
-    wavBuffer = await xaiVoiceTTS(text, language, language_code, voice_description, apiKey);
+    mp3Buffer = await xaiTTS(text, language_code, voice_description, apiKey);
   } catch (err) {
     console.error('[tts] xAI error:', err.message);
-    return ttsUnavailable(language, text, err.message);
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 502, headers: { 'Content-Type': 'application/json', ...CORS } }
+    );
   }
 
-  // ── 3. Cache + return ─────────────────────────────────────────────────────
+  // ── Cache + respond ─────────────────────────────────────────────────────
 
   if (kv) {
-    kv.put(cacheKey, wavBuffer, {
-      metadata: {
-        language,
-        languageCode: language_code,
-        voice: pickVoice(language, voice_description),
-        textLength: text.length,
-        cachedAt: new Date().toISOString(),
-      },
-    }).catch(e => console.warn('[tts] KV write:', e.message));
+    kv.put(cacheKey, mp3Buffer, {
+      metadata: { language, voice: pickVoice(voice_description), cachedAt: new Date().toISOString() },
+    }).catch(e => console.warn('[tts] KV write error:', e.message));
   }
 
-  return new Response(wavBuffer, {
+  return new Response(mp3Buffer, {
     status: 200,
     headers: {
-      'Content-Type': 'audio/wav',
-      'Cache-Control': 'public, max-age=31536000, immutable',
-      'X-TTS-Provider': 'xai-realtime',
-      'X-Voice': pickVoice(language, voice_description),
-      'X-Language': language,
+      'Content-Type':   'audio/mpeg',
+      'Cache-Control':  'public, max-age=31536000, immutable',
+      'X-TTS-Provider': 'xai-tts',
+      'X-Voice':        pickVoice(voice_description),
+      'X-Language':     language,
       ...CORS,
     },
   });
 }
 
-function ttsUnavailable(language, text, reason = '') {
-  console.warn('[tts] unavailable:', reason);
-  return new Response(
-    JSON.stringify({ error: 'TTS unavailable', fallback: 'web-speech', language, reason, text_length: text?.length || 0 }),
-    { status: 503, headers: { 'Content-Type': 'application/json', 'X-TTS-Provider': 'fallback', ...CORS } }
-  );
-}
-
-// ── OPTIONS ────────────────────────────────────────────────────────────────────
+// ── OPTIONS ────────────────────────────────────────────────────────────────
 
 export async function onRequestOptions() {
-  return new Response(null, { status: 204, headers: { ...CORS, 'Access-Control-Max-Age': '86400' } });
+  return new Response(null, {
+    status: 204,
+    headers: { ...CORS, 'Access-Control-Max-Age': '86400' },
+  });
 }
