@@ -320,17 +320,20 @@ export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
 
 // ── Bead Layout Data ────────────────────────────────────────
 
-export function getBeadPositions(cx = 300, cy = 232, rx = 208, ry = 182): Array<{x: number; y: number; type: string; size: number}> {
+export function getBeadPositions(cx = 300, cy = 240, rx = 185, ry = 175): Array<{x: number; y: number; type: string; size: number}> {
   const positions: Array<{x: number; y: number; type: string; size: number}> = [];
 
-  // Loop tilted 15° (like the 📿 emoji) — beads placed pre-rotation, SVG group rotates them
-  const tailBottom = cy + ry; // = 414 for defaults
-  positions.push({ x: cx, y: tailBottom + 103, type: 'crucifix',  size: 18 }); // 0 → y=517
-  positions.push({ x: cx, y: tailBottom +  77, type: 'of',        size: 14 }); // 1 → y=491
-  positions.push({ x: cx, y: tailBottom +  57, type: 'hm',        size: 11 }); // 2 → y=471
-  positions.push({ x: cx, y: tailBottom +  39, type: 'hm',        size: 11 }); // 3 → y=453
-  positions.push({ x: cx, y: tailBottom +  20, type: 'hm',        size: 11 }); // 4 → y=434
-  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=414
+  // Teardrop shape: y = cy + ry·sin(t)·(1 − k·sin(t))
+  // k=0.25 → wide/round at top (t=270°), narrow at junction bottom (t=90°)
+  const k = 0.25;
+  const tailBottom = Math.round(cy + ry * (1 - k)); // = 371 for defaults
+
+  positions.push({ x: cx, y: tailBottom + 128, type: 'crucifix',  size: 18 }); // 0 → y=499
+  positions.push({ x: cx, y: tailBottom +  88, type: 'of',        size: 14 }); // 1 → y=459
+  positions.push({ x: cx, y: tailBottom +  66, type: 'hm',        size: 11 }); // 2 → y=437
+  positions.push({ x: cx, y: tailBottom +  45, type: 'hm',        size: 11 }); // 3 → y=416
+  positions.push({ x: cx, y: tailBottom +  23, type: 'hm',        size: 11 }); // 4 → y=394
+  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=371
 
   const GAP_DEG = 8;
   const arcTotal = 360 - GAP_DEG;
@@ -341,9 +344,9 @@ export function getBeadPositions(cx = 300, cy = 232, rx = 208, ry = 182): Array<
 
   for (let i = 0; i < totalLoopBeads; i++) {
     const angleDeg = startDeg + i * stepDeg;
-    const angleRad = (angleDeg * Math.PI) / 180;
-    const x = cx + rx * Math.cos(angleRad);
-    const y = cy + ry * Math.sin(angleRad);
+    const t = (angleDeg * Math.PI) / 180;
+    const x = cx + rx * Math.cos(t);
+    const y = cy + ry * Math.sin(t) * (1 - k * Math.sin(t));
     const isOf = decadeStarts.includes(i);
     positions.push({
       x: Math.round(x * 10) / 10,
