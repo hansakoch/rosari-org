@@ -14,7 +14,7 @@
  * Env var:     XAI_API_KEY (required)
  */
 
-const CACHE_VERSION = 'v4-mp3';
+const CACHE_VERSION = 'v5-mp3'; // bumped: invalidates pre-translation cached audio
 const XAI_TTS_URL   = 'https://api.x.ai/v1/tts';   // Worker upgrades to wss://
 const SAMPLE_RATE   = 24000;
 const BIT_RATE      = 128000;
