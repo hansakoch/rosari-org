@@ -417,8 +417,8 @@ import KaraokeText from '../components/KaraokeText.astro';
   el('language-text-submit')?.addEventListener('click', () => {
     audioManager.unlock(); // Must unlock in gesture — iOS may have consumed the { once } listener
     const input = el<HTMLInputElement>('language-text-input');
-    const text = input?.value.trim();
-    if (!text) return;
+    // Default to English if input is empty rather than silently failing
+    const text = input?.value.trim() || 'English';
     const parsed = parseVoiceInput(text);
     handleLanguageSelected(parsed.language, parsed.languageCode, parsed.voiceDescription);
   });
