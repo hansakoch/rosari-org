@@ -79,7 +79,7 @@
       />
 
       <!-- Tail cord (junction connector → crucifix) -->
-      <line id="tail-cord" x1="300" y1="372" x2="300" y2="502"
+      <line id="tail-cord" x1="300" y1="344" x2="300" y2="477"
         stroke="#7a4a1a" stroke-width="1.4" opacity="0.6"/>
 
       <!--
@@ -88,7 +88,7 @@
         Connector bead at cy=-26 hangs from the loop above.
       -->
       <g id="bead-crucifix" class="bead-group bead-crucifix" data-bead-idx="0"
-         transform="translate(300, 502)">
+         transform="translate(300, 477)">
         <!-- Connector bead (links cross to tail beads) -->
         <circle cx="0" cy="-26" r="8" fill="url(#bg-of)" stroke="#c9a84c" stroke-width="1.2"/>
 
@@ -136,8 +136,9 @@
 <script>
   import { getBeadPositions } from '../scripts/rosary-data.ts';
 
-  // Teardrop shape parameters — must match getBeadPositions defaults
-  const CX = 300, CY = 240, RX = 185, RY = 175;
+  // Golden ratio teardrop — must match getBeadPositions defaults
+  // RX=RY=168 (Fibonacci: 8×21), k=0.382 (1/φ²), bead ratio 16:10 ≈ φ
+  const CX = 300, CY = 240, RX = 168, RY = 168;
   const positions = getBeadPositions(CX, CY, RX, RY);
 
   function makeBead(

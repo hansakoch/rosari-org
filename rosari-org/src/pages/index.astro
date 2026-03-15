@@ -461,6 +461,11 @@ import KaraokeText from '../components/KaraokeText.astro';
     audioManager.unlock();
   }, { once: true });
 
+  // Re-unlock AudioContext when user returns to the tab (iOS/Android auto-suspend on background)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') audioManager.unlock();
+  });
+
   // ── Boot ────────────────────────────────────────────────────
   async function init() {
     initSeasonalFooter();

@@ -101,9 +101,7 @@ export class AudioManager {
     if (cached?.audioData) {
       try {
         const ctx = this.getCtx();
-        const buffer = await new Promise<AudioBuffer>((res, rej) =>
-          ctx.decodeAudioData(cached.audioData!.slice(0), res, rej)
-        );
+        const buffer = await ctx.decodeAudioData(cached.audioData!.slice(0) as ArrayBuffer);
         return { buffer, wordTimings: cached.wordTimings, translatedText: cached.translatedText };
       } catch {
         // Cache entry corrupt — fall through to API
@@ -114,9 +112,7 @@ export class AudioManager {
     const { data: xaiData, translatedText } = await this.fetchXAIAudio(req, signal);
 
     const ctx = this.getCtx();
-    const buffer = await new Promise<AudioBuffer>((res, rej) =>
-      ctx.decodeAudioData(xaiData.slice(0), res, rej)
-    );
+    const buffer = await ctx.decodeAudioData(xaiData.slice(0) as ArrayBuffer);
 
     // Persist to local IndexedDB cache (non-blocking)
     saveAudioCache({
@@ -142,8 +138,9 @@ export class AudioManager {
     if (signal.aborted) return;
 
     const ctx = this.getCtx();
-    // iOS suspends the context between user gesture and async playback
-    if (ctx.state === 'suspended') await ctx.resume();
+    // Always attempt to resume — iOS/Android may auto-suspend the context when
+    // the tab is backgrounded. This is a no-op if already running.
+    try { await ctx.resume(); } catch {}
     if (signal.aborted) return;
 
     const source = ctx.createBufferSource();
@@ -198,7 +195,10 @@ export class AudioManager {
     this.wordTimers = [];
     try { this.currentSource?.stop(); } catch {}
     this.currentSource = null;
-    this.audioCtx?.suspend();
+    // NOTE: Do NOT suspend the AudioContext here.
+    // Calling suspend() requires the context to be re-resumed via a user gesture on iOS/Android.
+    // Since playBuffer() is called asynchronously (after a fetch), it cannot reliably resume
+    // a suspended context. Leaving the context running idle is safe and costs nothing.
   }
 
   // ── Play a prayer step — fetches, decodes, and plays ─────

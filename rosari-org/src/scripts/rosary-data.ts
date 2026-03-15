@@ -320,20 +320,30 @@ export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
 
 // ── Bead Layout Data ────────────────────────────────────────
 
-export function getBeadPositions(cx = 300, cy = 240, rx = 185, ry = 175): Array<{x: number; y: number; type: string; size: number}> {
+export function getBeadPositions(cx = 300, cy = 240, rx = 168, ry = 168): Array<{x: number; y: number; type: string; size: number}> {
   const positions: Array<{x: number; y: number; type: string; size: number}> = [];
 
-  // Teardrop shape: y = cy + ry·sin(t)·(1 − k·sin(t))
-  // k=0.25 → wide/round at top (t=270°), narrow at junction bottom (t=90°)
-  const k = 0.25;
-  const tailBottom = Math.round(cy + ry * (1 - k)); // = 371 for defaults
+  // ── Golden Ratio Teardrop ─────────────────────────────────
+  // Formula: y = cy + ry·sin(t)·(1 − k·sin(t))
+  //
+  // k = 1/φ² ≈ 0.382  (φ = golden ratio = 1.618)
+  // RX = RY = 168  (8 × 21 — Fibonacci product; ratio 21/13 ≈ φ)
+  //
+  // The teardrop distortion amplitudes:
+  //   top  half = ry · (1 + k) = 168 · 1.382 = 232  ← wide, round
+  //   bot  half = ry · (1 − k) = 168 · 0.618 = 104  ← narrow junction
+  //   ratio top/bot = (1+k)/(1-k) = 1.382/0.618 = √5 ≈ 2.236  (divine!)
+  //
+  // Bead sizes follow φ:  HM = 10,  OF = 16  (ratio 1.6 ≈ φ)
+  const k = 0.382;
+  const tailBottom = Math.round(cy + ry * (1 - k)); // = 344 for defaults
 
-  positions.push({ x: cx, y: tailBottom + 128, type: 'crucifix',  size: 18 }); // 0 → y=499
-  positions.push({ x: cx, y: tailBottom +  88, type: 'of',        size: 14 }); // 1 → y=459
-  positions.push({ x: cx, y: tailBottom +  66, type: 'hm',        size: 11 }); // 2 → y=437
-  positions.push({ x: cx, y: tailBottom +  45, type: 'hm',        size: 11 }); // 3 → y=416
-  positions.push({ x: cx, y: tailBottom +  23, type: 'hm',        size: 11 }); // 4 → y=394
-  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=371
+  positions.push({ x: cx, y: tailBottom + 133, type: 'crucifix',  size: 18 }); // 0 → y=477
+  positions.push({ x: cx, y: tailBottom +  87, type: 'of',        size: 16 }); // 1 → y=431
+  positions.push({ x: cx, y: tailBottom +  63, type: 'hm',        size: 10 }); // 2 → y=407
+  positions.push({ x: cx, y: tailBottom +  43, type: 'hm',        size: 10 }); // 3 → y=387
+  positions.push({ x: cx, y: tailBottom +  23, type: 'hm',        size: 10 }); // 4 → y=367
+  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=344
 
   const GAP_DEG = 8;
   const arcTotal = 360 - GAP_DEG;
@@ -352,7 +362,7 @@ export function getBeadPositions(cx = 300, cy = 240, rx = 185, ry = 175): Array<
       x: Math.round(x * 10) / 10,
       y: Math.round(y * 10) / 10,
       type: isOf ? 'of' : 'hm',
-      size: isOf ? 14 : 11,
+      size: isOf ? 16 : 10,
     });
   }
 

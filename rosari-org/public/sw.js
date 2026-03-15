@@ -3,7 +3,7 @@
  * Provides offline support, asset caching, and background sync
  */
 
-const CACHE_NAME = 'rosari-v2';
+const CACHE_NAME = 'rosari-v4';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
