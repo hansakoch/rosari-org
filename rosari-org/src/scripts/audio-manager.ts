@@ -84,7 +84,8 @@ export class AudioManager {
     const translatedText = raw ? decodeURIComponent(raw) : undefined;
 
     const data = await response.arrayBuffer();
-    return { data, translatedText };
+    // Use conditional spread to satisfy exactOptionalPropertyTypes (undefined not assignable to string)
+    return translatedText !== undefined ? { data, translatedText } : { data };
   }
 
   // ── Generate and decode audio for a prayer step ──────────
@@ -102,7 +103,11 @@ export class AudioManager {
       try {
         const ctx = this.getCtx();
         const buffer = await ctx.decodeAudioData(cached.audioData!.slice(0) as ArrayBuffer);
-        return { buffer, wordTimings: cached.wordTimings, translatedText: cached.translatedText };
+        return {
+          buffer,
+          ...(cached.wordTimings  !== undefined ? { wordTimings:    cached.wordTimings  } : {}),
+          ...(cached.translatedText !== undefined ? { translatedText: cached.translatedText } : {}),
+        };
       } catch {
         // Cache entry corrupt — fall through to API
       }
@@ -119,12 +124,12 @@ export class AudioManager {
       key: cacheKey,
       audioData: xaiData,
       text: req.text,
-      translatedText,
+      ...(translatedText !== undefined ? { translatedText } : {}),
       duration: buffer.duration,
       timestamp: Date.now(),
     }).catch(() => {});
 
-    return { buffer, translatedText };
+    return translatedText !== undefined ? { buffer, translatedText } : { buffer };
   }
 
   // ── Play a decoded AudioBuffer ────────────────────────────

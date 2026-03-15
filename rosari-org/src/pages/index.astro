@@ -87,6 +87,9 @@ import KaraokeText from '../components/KaraokeText.astro';
   let currentVoiceDesc = 'aged Catholic priest, deep gravelly male voice, slow and reverent';
   let isRunning = false;
   let isStopping = false;
+  // Track the TTS-translated text so renderState() doesn't override it with English source text
+  let currentTranslatedText = '';
+  let currentTranslatedTitle = '';
 
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
@@ -206,16 +209,16 @@ import KaraokeText from '../components/KaraokeText.astro';
 
     const isMystery = state.currentStep.prayer === 'mysteryAnnounce';
 
-    // Use localized prayer text for display
+    // Use the TTS-translated text if available so the karaoke language matches the audio.
+    // Fall back to the localised (English) source text only when translation hasn't arrived yet.
     const localPrayer = isMystery
       ? { text: state.currentMeditationText, title: state.currentPrayerTitle }
       : getPrayerText(state.currentStep.prayer);
 
-    updateKaraoke(
-      localPrayer.text || state.currentPrayerText,
-      state.wordIndex,
-      localPrayer.title || state.currentPrayerTitle
-    );
+    const displayText  = (!isMystery && currentTranslatedText)  ? currentTranslatedText  : (localPrayer.text  || state.currentPrayerText);
+    const displayTitle = (!isMystery && currentTranslatedTitle) ? currentTranslatedTitle : (localPrayer.title || state.currentPrayerTitle);
+
+    updateKaraoke(displayText, state.wordIndex, displayTitle);
 
     updateMysteryDisplay(state.currentMysteryName, state.currentMeditationText, isMystery);
     updateProgress(state.currentStepIndex, state.totalSteps);
@@ -259,6 +262,10 @@ import KaraokeText from '../components/KaraokeText.astro';
 
     const prayerKey = `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`;
 
+    // Clear previous translation so renderState shows source text while loading
+    currentTranslatedText = '';
+    currentTranslatedTitle = '';
+
     // Show loading indicator while xAI generates audio
     const loadingEl = document.getElementById('audio-loading');
     if (loadingEl) loadingEl.style.display = 'block';
@@ -273,8 +280,10 @@ import KaraokeText from '../components/KaraokeText.astro';
           voiceDescription: currentVoiceDesc,
           prayerKey,
         },
-        // Called as soon as audio is ready — update karaoke to the translated text
+        // Called as soon as audio is ready — store and display the translated text
         (translatedText: string) => {
+          currentTranslatedText  = translatedText;
+          currentTranslatedTitle = displayTitle;
           updateKaraoke(translatedText, 0, displayTitle);
           if (loadingEl) loadingEl.style.display = 'none';
         },
