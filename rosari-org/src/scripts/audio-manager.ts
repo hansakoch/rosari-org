@@ -102,10 +102,10 @@ export class AudioManager {
     if (cached?.audioData) {
       try {
         const ctx = this.getCtx();
-        const buffer = await ctx.decodeAudioData(cached.audioData!.slice(0) as ArrayBuffer);
+        const buffer = await this.decodeWithFallback(ctx, cached.audioData!.slice(0));
         return {
           buffer,
-          ...(cached.wordTimings  !== undefined ? { wordTimings:    cached.wordTimings  } : {}),
+          ...(cached.wordTimings    !== undefined ? { wordTimings:    cached.wordTimings    } : {}),
           ...(cached.translatedText !== undefined ? { translatedText: cached.translatedText } : {}),
         };
       } catch {
@@ -117,7 +117,7 @@ export class AudioManager {
     const { data: xaiData, translatedText } = await this.fetchXAIAudio(req, signal);
 
     const ctx = this.getCtx();
-    const buffer = await ctx.decodeAudioData(xaiData.slice(0) as ArrayBuffer);
+    const buffer = await this.decodeWithFallback(ctx, xaiData.slice(0));
 
     // Persist to local IndexedDB cache (non-blocking)
     saveAudioCache({
@@ -132,6 +132,23 @@ export class AudioManager {
     return translatedText !== undefined ? { buffer, translatedText } : { buffer };
   }
 
+  // ── Decode audio — callback-based with 30s timeout ───────
+  // The Promise-based decodeAudioData() API hangs silently on iOS/Brave.
+  // The callback API is universally reliable across all mobile browsers.
+
+  private decodeWithFallback(ctx: AudioContext, data: ArrayBuffer): Promise<AudioBuffer> {
+    return new Promise<AudioBuffer>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('decodeAudioData timed out after 30s')), 30_000
+      );
+      ctx.decodeAudioData(
+        data,
+        (decoded) => { clearTimeout(timer); resolve(decoded); },
+        (err)     => { clearTimeout(timer); reject(err ?? new Error('decodeAudioData failed')); }
+      );
+    });
+  }
+
   // ── Play a decoded AudioBuffer ────────────────────────────
 
   private async playBuffer(
@@ -143,9 +160,14 @@ export class AudioManager {
     if (signal.aborted) return;
 
     const ctx = this.getCtx();
-    // Always attempt to resume — iOS/Android may auto-suspend the context when
-    // the tab is backgrounded. This is a no-op if already running.
-    try { await ctx.resume(); } catch {}
+    // Always attempt to resume — iOS/Android may auto-suspend when backgrounded.
+    // Use a 3s race timeout: ctx.resume() can hang forever on Brave/iOS.
+    try {
+      await Promise.race([
+        ctx.resume(),
+        new Promise<void>((_, rej) => setTimeout(() => rej(new Error('resume timeout')), 3000)),
+      ]);
+    } catch { /* context may already be running — proceed regardless */ }
     if (signal.aborted) return;
 
     const source = ctx.createBufferSource();

@@ -338,7 +338,7 @@ export function getBeadPositions(cx = 300, cy = 240, rx = 168, ry = 168): Array<
   const k = 0.382;
   const tailBottom = Math.round(cy + ry * (1 - k)); // = 344 for defaults
 
-  positions.push({ x: cx, y: tailBottom + 133, type: 'crucifix',  size: 18 }); // 0 → y=477
+  positions.push({ x: cx, y: tailBottom + 146, type: 'crucifix',  size: 22 }); // 0 → y=490 (SVG uses scale(1.8))
   positions.push({ x: cx, y: tailBottom +  87, type: 'of',        size: 16 }); // 1 → y=431
   positions.push({ x: cx, y: tailBottom +  63, type: 'hm',        size: 10 }); // 2 → y=407
   positions.push({ x: cx, y: tailBottom +  43, type: 'hm',        size: 10 }); // 3 → y=387

@@ -5,7 +5,7 @@
 <div class="rosary-wrap" id="rosary-wrap" role="img" aria-label="Rosary bead visualization">
   <svg
     id="rosary-svg"
-    viewBox="0 0 600 560"
+    viewBox="0 0 600 620"
     xmlns="http://www.w3.org/2000/svg"
     aria-hidden="true"
     preserveAspectRatio="xMidYMid meet"
@@ -66,7 +66,7 @@
       Teardrop shape: beads follow  y = cy + ry·sin(t)·(1 − k·sin(t))
         → wide/round at top (t=270°), narrow at bottom junction (t=90°)
     -->
-    <g id="rosary-group" transform="rotate(15, 300, 295)">
+    <g id="rosary-group" transform="rotate(15, 300, 310)">
 
       <!-- Loop cord: dynamically traced along teardrop bead path by JS -->
       <polyline id="loop-cord" points=""
@@ -79,41 +79,42 @@
       />
 
       <!-- Tail cord (junction connector → crucifix) -->
-      <line id="tail-cord" x1="300" y1="344" x2="300" y2="477"
+      <line id="tail-cord" x1="300" y1="344" x2="300" y2="490"
         stroke="#7a4a1a" stroke-width="1.4" opacity="0.6"/>
 
       <!--
-        Crucifix — made large and clearly visible.
-        Translate point is the top of the cross body.
-        Connector bead at cy=-26 hangs from the loop above.
+        Crucifix — scale(1.8) makes it large and unmissable on all screen sizes.
+        Translate(300,490) puts the origin at top of cross body.
+        scale(1.8) expands all child coordinates by 1.8× from that origin.
       -->
       <g id="bead-crucifix" class="bead-group bead-crucifix" data-bead-idx="0"
-         transform="translate(300, 477)">
-        <!-- Connector bead (links cross to tail beads) -->
-        <circle cx="0" cy="-26" r="8" fill="url(#bg-of)" stroke="#c9a84c" stroke-width="1.2"/>
+         transform="translate(300, 490) scale(1.8)">
+        <!-- Connector bead -->
+        <circle cx="0" cy="-26" r="8" fill="url(#bg-of)" stroke="#c9a84c" stroke-width="0.8"/>
+
+        <!-- Glow halo behind cross (always visible, not just on active) -->
+        <rect x="-8" y="-17" width="16" height="55" rx="3"
+          fill="none" stroke="#f5d06e" stroke-width="2" opacity="0.25"
+          filter="url(#glow)"/>
 
         <!-- Cross vertical beam -->
-        <rect x="-7" y="-16" width="14" height="52" rx="2.5"
-          fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.8" opacity="0.95"/>
+        <rect x="-8" y="-17" width="16" height="55" rx="3"
+          fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.6"/>
 
         <!-- Cross horizontal beam -->
-        <rect x="-18" y="-4" width="36" height="12" rx="2.5"
-          fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.8" opacity="0.95"/>
+        <rect x="-20" y="-4" width="40" height="13" rx="3"
+          fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.6"/>
 
         <!-- INRI tablet -->
-        <rect x="-8" y="-22" width="16" height="8" rx="1.5"
-          fill="#c9a84c" opacity="0.85"/>
-        <text x="0" y="-16" text-anchor="middle" font-family="serif" font-size="5.5"
-          fill="#1a0e00" font-weight="bold" letter-spacing="0.8">INRI</text>
+        <rect x="-9" y="-24" width="18" height="9" rx="2"
+          fill="#c9a84c" opacity="0.9"/>
+        <text x="0" y="-17.5" text-anchor="middle" font-family="serif" font-size="5.5"
+          fill="#1a0e00" font-weight="bold" letter-spacing="1">INRI</text>
 
-        <!-- Corpus silhouette -->
-        <ellipse cx="0" cy="8" rx="5" ry="7" fill="#f5d06e" opacity="0.55"/>
-        <line x1="-6" y1="5"  x2="6" y2="5"  stroke="#1a0e00" stroke-width="1.2" opacity="0.4"/>
-        <line x1="0"  y1="-2" x2="0" y2="18" stroke="#1a0e00" stroke-width="1.2" opacity="0.4"/>
-
-        <!-- Subtle glow ring around base -->
-        <rect x="-7" y="-16" width="14" height="52" rx="2.5"
-          fill="none" stroke="#f5d06e" stroke-width="0.5" opacity="0.3"/>
+        <!-- Corpus -->
+        <ellipse cx="0" cy="9" rx="5.5" ry="7.5" fill="#f5d06e" opacity="0.55"/>
+        <line x1="-7" y1="6"  x2="7"  y2="6"  stroke="#1a0e00" stroke-width="1.1" opacity="0.45"/>
+        <line x1="0"  y1="-1" x2="0"  y2="20" stroke="#1a0e00" stroke-width="1.1" opacity="0.45"/>
       </g>
 
       <!-- Bead groups populated by JS -->
