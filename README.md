@@ -1,4 +1,4 @@
-# 🙏 Rosari — A Modern Rosary Web App
+# ✝️Rosari📿 — A Modern Rosary Web App🙏
 
 A beautiful, fully-featured Progressive Web App (PWA) for praying the rosary with authentic Latin prayers, intelligent text-to-speech, and a seamless cross-platform experience.
 
