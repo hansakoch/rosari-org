@@ -3,6 +3,8 @@ node_modules/
 *.log
 dist/
 build/
+.astro/
+package-lock.json
 .env
 .dev.vars
 .wrangler/
