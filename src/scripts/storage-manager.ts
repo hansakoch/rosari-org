@@ -31,7 +31,7 @@ async function openDB(): Promise<IDBDatabase> {
         database.createObjectStore('audio_cache', { keyPath: 'key' });
       }
     };
-    req.onsuccess = () => { clearTimeout(timer); db = req.result; resolve(db); };
+    req.onsuccess = () => { clearTimeout(timer); db = (e.target as IDBOpenDBRequest).result; resolve(db!); };
     req.onerror = () => { clearTimeout(timer); reject(req.error); };
   });
 }
@@ -56,15 +56,8 @@ export async function loadPreferences(): Promise<RosaryPreferences | null> {
   } catch { return null; }
 }
 
-// Key on the actual text so identical prayers (all 50 Hail Marys) share a single
-// client-side cache entry instead of fragmenting by decade/index.
-export function buildCacheKey(text: string, language: string, voice: string): string {
-  let hash = 5381;
-  const src = text.trim().toLowerCase();
-  for (let i = 0; i < src.length; i++) hash = ((hash * 33) ^ src.charCodeAt(i)) >>> 0;
-  const lang = (language || '').toLowerCase().trim().replace(/\s+/g, '-');
-  const voc  = (voice    || '').toLowerCase().trim().replace(/\s+/g, '-');
-  return `${hash.toString(36)}::${lang}::${voc}`;
+export function buildCacheKey(prayerKey: string, language: string, voice: string): string {
+  return `${prayerKey}::${language}::${voice}`.toLowerCase().replace(/\s+/g, '-');
 }
 
 export async function saveAudioCache(entry: AudioCache): Promise<void> {
