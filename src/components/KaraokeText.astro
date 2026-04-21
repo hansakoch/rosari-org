@@ -1,0 +1,161 @@
+---
+// KaraokeText.astro — Windowed prayer text: only a few words visible at once
+---
+
+<section class="karaoke-section" aria-label="Prayer text">
+  <!-- Mystery announcement banner -->
+  <div id="mystery-announcement" class="mystery-announcement" style="display:none;" aria-live="assertive">
+    <div class="mystery-label">Mystery</div>
+    <div class="mystery-name-display" id="mystery-name"></div>
+    <div class="mystery-meditation" id="mystery-meditation"></div>
+  </div>
+
+  <!-- Prayer title -->
+  <div id="prayer-title" class="prayer-title"></div>
+
+  <!-- Windowed karaoke — only shows a slice of words around current position -->
+  <div
+    id="karaoke-primary"
+    class="karaoke-window"
+    role="text"
+    aria-live="polite"
+    aria-atomic="false"
+  ></div>
+</section>
+
+<style>
+  .karaoke-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem 0.6rem;
+    width: 100%;
+    min-height: 0;
+  }
+
+  /* Mystery announcement */
+  .mystery-announcement {
+    width: 100%;
+    max-width: 560px;
+    background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.7rem 1rem;
+    animation: fadeInUp 0.5s ease;
+    text-align: center;
+  }
+
+  .mystery-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+
+  .mystery-name-display {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.95rem, 3vw, 1.25rem);
+    font-weight: 600;
+    color: var(--accent2);
+    text-shadow: 0 0 18px var(--accent-glow);
+    margin-bottom: 0.3rem;
+  }
+
+  .mystery-meditation {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.8rem, 2.2vw, 0.95rem);
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* Prayer title */
+  .prayer-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.7rem, 2.2vw, 0.9rem);
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    min-height: 1.2em;
+  }
+
+  /* Windowed karaoke text */
+  .karaoke-window {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.35rem, 4.5vw, 2rem);
+    line-height: 1.5;
+    text-align: center;
+    min-height: 2.8em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0 0.35em;
+    max-width: 680px;
+    width: 100%;
+    padding: 0 0.5rem;
+  }
+
+  /* Word states */
+  :global(.kw) {
+    display: inline;
+    transition: all 0.18s ease;
+  }
+
+  :global(.kw-past) {
+    color: var(--text-muted);
+    font-size: 0.82em;
+    opacity: 0.6;
+  }
+
+  :global(.kw-active) {
+    color: var(--gold-light);
+    font-weight: 600;
+    font-size: 1.08em;
+    text-shadow: 0 0 18px var(--gold-glow), 0 0 30px var(--accent-glow);
+    position: relative;
+  }
+
+  /* Animated dot under active word */
+  :global(.kw-active)::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2), 0 0 14px var(--accent-glow);
+    animation: dotPulse 0.9s ease-in-out infinite;
+  }
+
+  :global(.kw-next) {
+    color: var(--text-dim);
+    opacity: 0.75;
+  }
+
+  :global(.kw-far) {
+    color: var(--text-muted);
+    opacity: 0.4;
+    font-size: 0.78em;
+  }
+
+  :global(.kw-ellipsis) {
+    color: var(--text-muted);
+    opacity: 0.35;
+    font-size: 0.75em;
+    letter-spacing: 0.04em;
+  }
+
+  @keyframes dotPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); opacity: 1; }
+    50%       { transform: translateX(-50%) scale(1.4); opacity: 0.7; }
+  }
+</style>
