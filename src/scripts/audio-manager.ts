@@ -8,11 +8,19 @@ export interface TTSRequest {
   prayerKey: string;
 }
 
+// A single prepared audio clip — decoded and ready to play.
+interface PreparedAudio {
+  buffer: AudioBuffer;
+}
+
 export class AudioManager {
   private audioCtx: AudioContext | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
-  private wordTimers: ReturnType<typeof setTimeout>[] = [];
   private stopCtrl: AbortController | null = null;
+
+  // Dedup in-flight generations so prefetch(x) + playStep(x) share one network call.
+  // Keyed on text-content cache key; same text reuses the same promise.
+  private inflight = new Map<string, Promise<PreparedAudio>>();
 
   private getCtx(): AudioContext {
     if (!this.audioCtx || this.audioCtx.state === 'closed') {
@@ -33,11 +41,10 @@ export class AudioManager {
     ctx.resume().catch(() => {});
   }
 
-  async fetchXAIAudio(req: TTSRequest, signal: AbortSignal) {
+  private async fetchXAIAudio(req: TTSRequest, signal: AbortSignal): Promise<ArrayBuffer> {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 45000);
     signal.addEventListener('abort', () => ctrl.abort(), { once: true });
-
     try {
       const response = await fetch('/audio', {
         method: 'POST',
@@ -50,32 +57,11 @@ export class AudioManager {
         }),
         signal: ctrl.signal,
       });
-      clearTimeout(timer);
-
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.arrayBuffer();
-      return { data };
+      return await response.arrayBuffer();
     } finally {
       clearTimeout(timer);
     }
-  }
-
-  async generateAudio(req: TTSRequest, signal: AbortSignal) {
-    const cacheKey = buildCacheKey(req.prayerKey, req.language, req.voiceDescription);
-    const cached = await loadAudioCache(cacheKey);
-    if (cached?.audioData) {
-      try {
-        const ctx = this.getCtx();
-        const buffer = await this.decodeWithFallback(ctx, cached.audioData.slice(0));
-        return { buffer };
-      } catch {}
-    }
-
-    const { data: xaiData } = await this.fetchXAIAudio(req, signal);
-    const ctx = this.getCtx();
-    const buffer = await this.decodeWithFallback(ctx, xaiData.slice(0));
-    saveAudioCache({ key: cacheKey, audioData: xaiData, text: req.text, duration: buffer.duration, timestamp: Date.now() }).catch(() => {});
-    return { buffer };
   }
 
   private decodeWithFallback(ctx: AudioContext, data: ArrayBuffer): Promise<AudioBuffer> {
@@ -89,12 +75,61 @@ export class AudioManager {
     });
   }
 
-  async playStep(text: string, req: TTSRequest, onTranslatedText: (t: string) => void, onWord: (i: number) => void, onComplete: () => void): Promise<void> {
+  private async doGenerate(req: TTSRequest, cacheKey: string): Promise<PreparedAudio> {
+    // IndexedDB cache (client-side; survives reloads)
+    const cached = await loadAudioCache(cacheKey);
+    if (cached?.audioData) {
+      try {
+        const ctx = this.getCtx();
+        const buffer = await this.decodeWithFallback(ctx, cached.audioData.slice(0));
+        return { buffer };
+      } catch {}
+    }
+    // Server round-trip: KV cache on the edge → translation → xAI TTS
+    const ctrl = new AbortController();
+    const raw = await this.fetchXAIAudio(req, ctrl.signal);
+    const ctx = this.getCtx();
+    const buffer = await this.decodeWithFallback(ctx, raw.slice(0));
+    // Persist for next session; errors don't block playback.
+    saveAudioCache({
+      key: cacheKey, audioData: raw, text: req.text, duration: buffer.duration, timestamp: Date.now(),
+    }).catch(() => {});
+    return { buffer };
+  }
+
+  // Fire-and-forget. Safe to call multiple times for the same text —
+  // the in-flight map dedupes. Returns the promise in case the caller wants to await it.
+  prefetch(req: TTSRequest): Promise<PreparedAudio> {
+    const cacheKey = buildCacheKey(req.text, req.language, req.voiceDescription);
+    const existing = this.inflight.get(cacheKey);
+    if (existing) return existing;
+    const promise = this.doGenerate(req, cacheKey).catch(err => {
+      // Drop failed promises so the next call retries.
+      this.inflight.delete(cacheKey);
+      throw err;
+    });
+    this.inflight.set(cacheKey, promise);
+    return promise;
+  }
+
+  // Back-compat: the offline-download flow and the playback path both call this.
+  generateAudio(req: TTSRequest, _signal?: AbortSignal): Promise<PreparedAudio> {
+    return this.prefetch(req);
+  }
+
+  async playStep(
+    text: string,
+    req: TTSRequest,
+    onTranslatedText: (t: string) => void,
+    _onWord: (i: number) => void,
+    _onComplete: () => void,
+  ): Promise<void> {
     this.stopCtrl?.abort();
     const ctrl = new AbortController();
     this.stopCtrl = ctrl;
 
-    const { buffer } = await this.generateAudio(req, ctrl.signal);
+    // Either uses an in-flight prefetch or starts a fresh generation.
+    const { buffer } = await this.prefetch(req);
     if (ctrl.signal.aborted) return;
     onTranslatedText(text);
 
@@ -107,17 +142,13 @@ export class AudioManager {
     source.connect(ctx.destination);
     this.currentSource = source;
 
-    this.wordTimers.forEach(t => clearTimeout(t));
-    this.wordTimers = [];
-
-    return new Promise((resolve) => {
-      signal.addEventListener('abort', () => {
-        this.wordTimers.forEach(t => clearTimeout(t));
+    return new Promise<void>((resolve) => {
+      const finish = () => { this.currentSource = null; resolve(); };
+      ctrl.signal.addEventListener('abort', () => {
         try { source.stop(); } catch {}
-        resolve();
+        finish();
       }, { once: true });
-
-      source.onended = () => resolve();
+      source.onended = finish;
       source.start(0);
     });
   }
@@ -125,10 +156,13 @@ export class AudioManager {
   stop(): void {
     this.stopCtrl?.abort();
     this.stopCtrl = null;
-    this.wordTimers.forEach(t => clearTimeout(t));
-    this.wordTimers = [];
     try { this.currentSource?.stop(); } catch {}
     this.currentSource = null;
+  }
+
+  // Drop cached in-flight promises — call this when the language/voice changes.
+  clearPrefetch(): void {
+    this.inflight.clear();
   }
 }
 
