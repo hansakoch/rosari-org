@@ -211,6 +211,37 @@ import KaraokeText from '../components/KaraokeText.astro';
     }
   }
 
+  // Pull the TTS text for any step in the sequence — used by prefetch.
+  function ttsTextForStep(step: any): string {
+    if (step.prayer === 'mysteryAnnounce') {
+      const mysteryType = engine?.getState().mysteryType;
+      if (!mysteryType) return '';
+      const m = MYSTERY_SETS[mysteryType]?.mysteries[step.mysteryIndex ?? 0];
+      return m ? `${m.name}. ${m.meditation}` : '';
+    }
+    return getPrayerText(step.prayer).text || '';
+  }
+
+  // Kick off background generation for a rolling window of upcoming steps.
+  // Safe to call repeatedly — audioManager.prefetch dedupes identical text.
+  function prefetchUpcoming(fromIdx: number, count: number): void {
+    if (!engine) return;
+    const seq = engine.getSequence();
+    for (let i = fromIdx; i < Math.min(seq.length, fromIdx + count); i++) {
+      const step = seq[i];
+      const text = ttsTextForStep(step);
+      if (!text) continue;
+      const key = `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`;
+      audioManager.prefetch({
+        text,
+        language: currentLanguage,
+        languageCode: currentLanguageCode,
+        voiceDescription: currentVoiceDesc,
+        prayerKey: key,
+      }).catch(() => { /* prefetch errors retried on demand */ });
+    }
+  }
+
   async function playNextStep(): Promise<void> {
     if (!engine || !isRunning || isStopping) return;
     const state = engine.getState();
@@ -229,13 +260,30 @@ import KaraokeText from '../components/KaraokeText.astro';
     const prayerKey = `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`;
     currentTranslatedText = '';
     currentTranslatedTitle = '';
+
+    // Start the next 2 steps' audio in parallel so playback is seamless.
+    prefetchUpcoming(state.currentStepIndex + 1, 2);
+
+    // Only show "Generating audio…" if generation actually takes >500ms. Cache
+    // hits and prefetched steps no longer flash the indicator.
     const loadingEl = document.getElementById('audio-loading');
-    if (loadingEl) loadingEl.style.display = 'block';
+    const loadingTimer = window.setTimeout(() => {
+      if (loadingEl) loadingEl.style.display = 'block';
+    }, 500);
+    const hideLoading = () => { window.clearTimeout(loadingTimer); if (loadingEl) loadingEl.style.display = 'none'; };
+
     try {
       await audioManager.playStep(
         ttsText,
         { text: ttsText, language: currentLanguage, languageCode: currentLanguageCode, voiceDescription: currentVoiceDesc, prayerKey },
-        (translatedText: string) => { currentTranslatedText = translatedText; currentTranslatedTitle = displayTitle; updateKaraoke(translatedText, 0, displayTitle); if (loadingEl) loadingEl.style.display = 'none'; },
+        (translatedText: string) => {
+          currentTranslatedText = translatedText;
+          currentTranslatedTitle = displayTitle;
+          updateKaraoke(translatedText, 0, displayTitle);
+          hideLoading();
+          // Audio for current step is queued; widen the prefetch window now.
+          prefetchUpcoming(state.currentStepIndex + 1, 3);
+        },
         (wordIdx: number) => { engine?.setWordIndex(wordIdx); renderState(engine!.getState()); },
         () => {}
       );
@@ -248,10 +296,11 @@ import KaraokeText from '../components/KaraokeText.astro';
       if (errEl) { errEl.textContent = `Audio error: ${msg}`; errEl.style.display = 'block'; }
       return;
     } finally {
-      if (loadingEl) loadingEl.style.display = 'none';
+      hideLoading();
     }
     if (!isRunning || isStopping) return;
-    const pause = step.prayer === 'mysteryAnnounce' ? 2200 : step.prayer === 'fatimaPrayer' ? 900 : step.prayer === 'gloryBe' ? 700 : 450;
+    // Shorter pauses now that the next clip is already prepared in the background.
+    const pause = step.prayer === 'mysteryAnnounce' ? 1400 : step.prayer === 'fatimaPrayer' ? 500 : step.prayer === 'gloryBe' ? 400 : 200;
     await new Promise(r => setTimeout(r, pause));
     if (!isRunning || isStopping) return;
     const hasNext = engine!.nextStep();
@@ -260,11 +309,42 @@ import KaraokeText from '../components/KaraokeText.astro';
   }
 
   function startLanguageSelection(): void { showVoicePrompt(); }
+
+  // Fire off audio generation for the first few prayers of today's rosary in the
+  // chosen language, so step 1 has a head start before the user taps "Begin".
+  function warmupAudioForLanguage(): void {
+    audioManager.clearPrefetch();
+    const mysteryType = getMysteryForDate();
+    const seq = buildRosarySequence(mysteryType);
+    const set = MYSTERY_SETS[mysteryType];
+    for (let i = 0; i < Math.min(3, seq.length); i++) {
+      const step = seq[i];
+      let text = '';
+      if (step.prayer === 'mysteryAnnounce') {
+        const m = set.mysteries[step.mysteryIndex ?? 0];
+        text = m ? `${m.name}. ${m.meditation}` : '';
+      } else {
+        text = getPrayerForLanguage(step.prayer, currentLanguage).text;
+      }
+      if (!text) continue;
+      audioManager.prefetch({
+        text,
+        language: currentLanguage,
+        languageCode: currentLanguageCode,
+        voiceDescription: currentVoiceDesc,
+        prayerKey: `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`,
+      }).catch(() => {});
+    }
+  }
+
   function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
     currentLanguage = language;
     currentLanguageCode = languageCode;
     currentVoiceDesc = voiceDesc || 'aged Catholic priest, deep gravelly male voice, slow and reverent';
     savePreferences({ language: currentLanguage, voiceDescription: currentVoiceDesc, theme: (document.documentElement.getAttribute('data-theme') as 'night' | 'day') || 'night' }).catch(() => {});
+    // Begin pulling audio for the opening prayers the instant the language is locked in;
+    // the hide animation + startRosary delay gives xAI ~1.4s of head start.
+    warmupAudioForLanguage();
     setTimeout(() => { hideVoicePrompt(); if (!isRunning) startRosary(); }, 800);
   }
 
@@ -277,6 +357,9 @@ import KaraokeText from '../components/KaraokeText.astro';
     isStopping = false;
     engine.start();
     renderState(engine.getState());
+    // Warm the pipeline in case we got here without going through language prompt
+    // (returning-user Resume path). No-op if prefetch already fired.
+    warmupAudioForLanguage();
     playNextStep();
   }
 
