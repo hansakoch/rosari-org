@@ -1,41 +1,94 @@
 /**
- * tts.js — Cloudflare Pages Function: xAI TTS proxy
+ * audio.js — Cloudflare Pages Function: xAI TTS proxy
  *
- * xAI TTS WebSocket API
- *   wss://api.x.ai/v1/tts?language=<BCP47>&voice=<name>&codec=mp3&sample_rate=24000&bit_rate=128000
+ * xAI TTS WebSocket API (April 2026)
+ *   wss://api.x.ai/v1/tts?language=<BCP47>&voice=<name>&codec=<c>&sample_rate=<n>&bit_rate=<n>
+ *
+ * Supported languages (20): auto, en, ar-EG, ar-SA, ar-AE, bn, zh, fr, de, hi, id, it,
+ *   ja, ko, pt-BR, pt-PT, ru, es-MX, es-ES, tr, vi.
+ *
+ * Ecclesiastical Latin uses Italian phonetic rules, so we route `la` → `it`.
+ *
+ * Voices (xAI, 2026):
+ *   ara — warm, friendly         eve — energetic, upbeat (default)
+ *   leo — authoritative, strong  rex — confident, clear
+ *   sal — smooth, balanced
  *
  * Flow:
  *   Client → server:  {"type":"text.delta","delta":"..."} then {"type":"text.done"}
- *   Server → client:  {"type":"audio.delta","delta":"<base64 MP3 bytes>"} …then {"type":"audio.done"}
- *
- * Available voices: ara (female warm) | rex (male reverent) | sal (neutral) | eve (female) | leo (male)
+ *   Server → client:  {"type":"audio.delta","delta":"<base64>"} … {"type":"audio.done","trace_id":"…"}
  *
  * KV binding:  AUDIO_CACHE (optional — cache MP3 bytes)
  * Env var:     XAI_API_KEY (required)
  */
 
-const CACHE_VERSION = 'v5-mp3';
+const CACHE_VERSION = 'v6-mp3';
 const XAI_TTS_URL   = 'https://api.x.ai/v1/tts';
 const SAMPLE_RATE   = 24000;
 const BIT_RATE      = 128000;
+const MAX_DELTA_CHARS = 15000;
+
+const XAI_SUPPORTED = new Set([
+  'auto', 'en', 'ar-EG', 'ar-SA', 'ar-AE', 'bn', 'zh', 'fr', 'de', 'hi',
+  'id', 'it', 'ja', 'ko', 'pt-BR', 'pt-PT', 'ru', 'es-MX', 'es-ES', 'tr', 'vi',
+]);
+
+// BCP-47 → xAI language code. Ecclesiastical Latin maps to `it`
+// because Italian phonetics are the liturgical pronunciation.
+const LANG_NORMALIZE = {
+  'la': 'it', 'la-va': 'it', 'la-la': 'it', 'latin': 'it',
+  'en': 'en', 'en-us': 'en', 'en-gb': 'en', 'en-au': 'en', 'en-ie': 'en', 'en-ca': 'en',
+  'fr': 'fr', 'fr-fr': 'fr', 'fr-ca': 'fr',
+  'de': 'de', 'de-de': 'de', 'de-at': 'de', 'de-ch': 'de',
+  'it': 'it', 'it-it': 'it',
+  'pt': 'pt-PT', 'pt-pt': 'pt-PT', 'pt-br': 'pt-BR',
+  'es': 'es-ES', 'es-es': 'es-ES', 'es-mx': 'es-MX', 'es-la': 'es-MX', 'es-419': 'es-MX',
+  'ja': 'ja', 'ja-jp': 'ja',
+  'ko': 'ko', 'ko-kr': 'ko',
+  'zh': 'zh', 'zh-cn': 'zh', 'zh-tw': 'zh', 'zh-hk': 'zh', 'cmn': 'zh',
+  'hi': 'hi', 'hi-in': 'hi',
+  'id': 'id', 'id-id': 'id', 'ms': 'id', 'ms-my': 'id',
+  'ru': 'ru', 'ru-ru': 'ru',
+  'tr': 'tr', 'tr-tr': 'tr',
+  'vi': 'vi', 'vi-vn': 'vi',
+  'bn': 'bn', 'bn-in': 'bn', 'bn-bd': 'bn',
+  'ar': 'ar-EG', 'ar-eg': 'ar-EG', 'ar-sa': 'ar-SA', 'ar-ae': 'ar-AE',
+};
+
+function normalizeLanguage(code) {
+  if (!code) return 'auto';
+  const lower = String(code).trim().toLowerCase().replace('_', '-');
+  if (LANG_NORMALIZE[lower]) return LANG_NORMALIZE[lower];
+  const primary = lower.split('-')[0];
+  if (LANG_NORMALIZE[primary]) return LANG_NORMALIZE[primary];
+  for (const s of XAI_SUPPORTED) if (s.toLowerCase() === lower) return s;
+  return 'auto';
+}
 
 const CORS = {
   'Access-Control-Allow-Origin':   '*',
   'Access-Control-Allow-Methods':  'POST, OPTIONS',
   'Access-Control-Allow-Headers':  'Content-Type',
-  'Access-Control-Expose-Headers': 'X-Translated-Text, X-TTS-Provider, X-Voice, X-Language',
+  'Access-Control-Expose-Headers': 'X-Translated-Text, X-TTS-Provider, X-Voice, X-Language, X-Trace-Id',
 };
 
+// Voice characters (xAI docs, 2026):
+//   ara — warm, friendly        (conversational; feminine tone)
+//   eve — energetic, upbeat     (default)
+//   leo — authoritative, strong (instructional; best fit for reverent liturgy)
+//   rex — confident, clear      (corporate)
+//   sal — smooth, balanced      (neutral narrator)
 function pickVoice(voiceDescription) {
-  const desc = (voiceDescription || '').toLowerCase();
-  if (desc.includes('woman') || desc.includes('female') || desc.includes('feminine')) return 'ara';
-  if (
-    desc.includes(' man') || desc.includes('male') || desc.includes('masculine') ||
-    desc.includes('priest') || desc.includes('father') || desc.includes('friar')  ||
-    desc.includes('monk')   || desc.includes('elderly') || desc.includes('aged')  ||
-    desc.includes('farmer') || desc.includes('grandfather') || desc.includes('old ')
-  ) return 'rex';
-  return 'rex';
+  const d = (voiceDescription || '').toLowerCase();
+
+  if (/\b(woman|female|feminine|lady|sister|nun|madre|mother|abuela|grandmother|girl|femme)\b/.test(d)) return 'ara';
+  if (/\b(priest|father|friar|monk|pope|bishop|aged|elder|elderly|old|ancient|reverent|solemn|grandfather|abbot|rabbi|preacher)\b/.test(d)) return 'leo';
+  if (/\b(man|male|masculine|gentleman|businessman)\b/.test(d)) return 'rex';
+  if (/\b(warm|gentle|soft|kind|friendly|tender|motherly)\b/.test(d)) return 'ara';
+  if (/\b(smooth|neutral|narrator|calm|balanced)\b/.test(d)) return 'sal';
+  if (/\b(cheerful|upbeat|bright|energetic|young)\b/.test(d)) return 'eve';
+
+  return 'leo';
 }
 
 async function translateText(text, targetLanguage, apiKey) {
@@ -66,23 +119,21 @@ async function translateText(text, targetLanguage, apiKey) {
   return data.choices?.[0]?.message?.content?.trim() || text;
 }
 
-async function buildCacheKey(text, language, voiceDescription) {
+async function buildCacheKey(text, xaiLanguage, voice) {
   const raw = [
     CACHE_VERSION,
     text.trim().toLowerCase(),
-    (language || 'english').trim().toLowerCase(),
-    (voiceDescription || '').trim().toLowerCase(),
+    xaiLanguage,
+    voice,
   ].join('::');
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   return `audio::${hex}`;
 }
 
-async function xaiTTS(text, languageCode, voiceDescription, apiKey) {
-  const voice = pickVoice(voiceDescription);
-  const lang = (languageCode || 'en').replace('_', '-');
+async function xaiTTS(text, xaiLanguage, voice, apiKey) {
   const url = new URL(XAI_TTS_URL);
-  url.searchParams.set('language',    lang);
+  url.searchParams.set('language',    xaiLanguage);
   url.searchParams.set('voice',       voice);
   url.searchParams.set('codec',       'mp3');
   url.searchParams.set('sample_rate', String(SAMPLE_RATE));
@@ -109,6 +160,7 @@ async function xaiTTS(text, languageCode, voiceDescription, apiKey) {
 
   return new Promise((resolve, reject) => {
     const chunks = [];
+    let traceId = null;
     let done = false;
 
     const timer = setTimeout(() => {
@@ -125,7 +177,7 @@ async function xaiTTS(text, languageCode, voiceDescription, apiKey) {
       const out = new Uint8Array(totalLen);
       let offset = 0;
       for (const c of chunks) { out.set(new Uint8Array(c), offset); offset += c.byteLength; }
-      resolve(out.buffer);
+      resolve({ buffer: out.buffer, traceId });
     };
 
     ws.addEventListener('message', (event) => {
@@ -137,6 +189,7 @@ async function xaiTTS(text, languageCode, voiceDescription, apiKey) {
         for (let i = 0; i < raw.length; i++) b[i] = raw.charCodeAt(i);
         chunks.push(b.buffer);
       } else if (msg.type === 'audio.done') {
+        traceId = msg.trace_id || null;
         if (!done) { done = true; finish(null); }
       } else if (msg.type === 'error') {
         finish(new Error(msg.message || JSON.stringify(msg)));
@@ -145,7 +198,11 @@ async function xaiTTS(text, languageCode, voiceDescription, apiKey) {
 
     ws.addEventListener('error',  (e)  => finish(new Error(`WebSocket error: ${String(e)}`)));
     ws.addEventListener('close',  (e)  => { if (!done) finish(new Error(`WebSocket closed early: ${e.code} ${e.reason}`)); });
-    ws.send(JSON.stringify({ type: 'text.delta', delta: text }));
+
+    // Chunk the text if it exceeds the per-delta cap (15k chars).
+    for (let i = 0; i < text.length; i += MAX_DELTA_CHARS) {
+      ws.send(JSON.stringify({ type: 'text.delta', delta: text.slice(i, i + MAX_DELTA_CHARS) }));
+    }
     ws.send(JSON.stringify({ type: 'text.done' }));
   });
 }
@@ -156,7 +213,7 @@ export async function onRequestPost(context) {
   try { body = await request.json(); }
   catch { return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: { 'Content-Type': 'application/json', ...CORS } }); }
 
-  const { text, language = 'English', language_code = 'en', voice_description = 'elderly male, gravelly, slow and reverent' } = body;
+  const { text, language = 'English', language_code = 'en', voice_description = 'aged Catholic priest, deep reverent voice' } = body;
   if (!text || typeof text !== 'string' || text.trim().length === 0 || text.length > 8000) {
     return new Response(JSON.stringify({ error: 'Invalid text (1–8000 chars required)' }), { status: 400, headers: { 'Content-Type': 'application/json', ...CORS } });
   }
@@ -166,31 +223,46 @@ export async function onRequestPost(context) {
     return new Response(JSON.stringify({ error: 'XAI_API_KEY not configured on server' }), { status: 503, headers: { 'Content-Type': 'application/json', ...CORS } });
   }
 
-  const cacheKey = await buildCacheKey(text, language, voice_description);
-  const kv = env.AUDIO_CACHE;
+  const voice       = pickVoice(voice_description);
+  const xaiLanguage = normalizeLanguage(language_code);
+  const cacheKey    = await buildCacheKey(text, xaiLanguage, voice);
+  const kv          = env.AUDIO_CACHE;
 
   if (kv) {
     try {
       const { value: cached, metadata } = await kv.getWithMetadata(cacheKey, { type: 'arrayBuffer' });
       if (cached && cached.byteLength > 100) {
         const extraHeaders = {};
-        if (metadata?.translatedText) { extraHeaders['X-Translated-Text'] = metadata.translatedText; }
-        return new Response(cached, { status: 200, headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-TTS-Provider': 'cache', ...CORS, ...extraHeaders } });
+        if (metadata?.translatedText) extraHeaders['X-Translated-Text'] = metadata.translatedText;
+        return new Response(cached, { status: 200, headers: {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'X-TTS-Provider': 'cache',
+          'X-Voice': voice,
+          'X-Language': xaiLanguage,
+          ...CORS, ...extraHeaders,
+        } });
       }
     } catch (e) { console.warn('[tts] KV read error:', e.message); }
   }
 
+  // Translate the source text for languages that are spoken but not source-provided.
+  // Latin prayers are already written in Latin; English is already English; everything
+  // else we translate from the source English prayer to the target language.
   const isEnglish = /^en/i.test(language_code);
-  const isLatin   = language_code === 'la';
+  const isLatin   = /^la/i.test(language_code);
   let ttsText = text;
   if (!isEnglish && !isLatin) {
     try { ttsText = await translateText(text, language, apiKey); }
     catch (e) { console.warn('[tts] translation failed, falling back to source text:', e.message); }
   }
 
-  let mp3Buffer;
-  try { mp3Buffer = await xaiTTS(ttsText, language_code, voice_description, apiKey); }
-  catch (err) {
+  let mp3Buffer, traceId;
+  try {
+    const out = await xaiTTS(ttsText, xaiLanguage, voice, apiKey);
+    mp3Buffer = out.buffer;
+    traceId   = out.traceId;
+  } catch (err) {
     console.error('[tts] xAI error:', err.message);
     return new Response(JSON.stringify({ error: err.message }), { status: 502, headers: { 'Content-Type': 'application/json', ...CORS } });
   }
@@ -199,22 +271,22 @@ export async function onRequestPost(context) {
 
   if (kv) {
     kv.put(cacheKey, mp3Buffer, {
-      metadata: { language, voice: pickVoice(voice_description), translatedText: encodedTranslation, cachedAt: new Date().toISOString() },
+      metadata: { language: xaiLanguage, voice, translatedText: encodedTranslation, cachedAt: new Date().toISOString() },
     }).catch(e => console.warn('[tts] KV write error:', e.message));
   }
 
-  return new Response(mp3Buffer, {
-    status: 200,
-    headers: {
-      'Content-Type': 'audio/mpeg',
-      'Cache-Control': 'public, max-age=31536000, immutable',
-      'X-TTS-Provider': 'xai-tts',
-      'X-Voice': pickVoice(voice_description),
-      'X-Language': language,
-      'X-Translated-Text': encodedTranslation,
-      ...CORS,
-    },
-  });
+  const headers = {
+    'Content-Type': 'audio/mpeg',
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'X-TTS-Provider': 'xai-tts',
+    'X-Voice': voice,
+    'X-Language': xaiLanguage,
+    'X-Translated-Text': encodedTranslation,
+    ...CORS,
+  };
+  if (traceId) headers['X-Trace-Id'] = traceId;
+
+  return new Response(mp3Buffer, { status: 200, headers });
 }
 
 export async function onRequestOptions() {
