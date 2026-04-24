@@ -11,10 +11,10 @@ import KaraokeText from '../components/KaraokeText.astro';
 
   <div class="rosary-app" id="rosary-app">
 
-    <!-- ── Header ──────────────────────────────────────────── -->
+    <!-- ── Header ─────────────────────────────────────────── -->
     <header class="app-header">
       <div class="hdr-left">
-        <span class="hdr-cross" aria-hidden="true">☨</span>
+        <span class="hdr-cross" aria-hidden="true">✝</span>
         <span class="hdr-title">Rosari</span>
         <span id="mystery-banner" class="hdr-mystery"></span>
       </div>
@@ -24,17 +24,17 @@ import KaraokeText from '../components/KaraokeText.astro';
       </div>
     </header>
 
-    <!-- ── Thin progress bar ──────────────────────────────────── -->
+    <!-- ── Thin progress bar ──────────────────────────────── -->
     <div class="progress-bar-wrap" role="progressbar" aria-label="Rosary progress">
       <div id="progress-bar-inner" class="progress-bar-fill"></div>
     </div>
 
-    <!-- ── Rosary visualization (fills all free space) ────────────── -->
+    <!-- ── Rosary visualization (fills all free space) ───── -->
     <div class="bead-stage" aria-label="Rosary beads">
       <RosaryBeads />
     </div>
 
-    <!-- ── Karaoke text window ───────────────────────────── -->
+    <!-- ── Karaoke text window ────────────────────────────── -->
     <div class="text-stage">
       <KaraokeText />
     </div>
@@ -49,19 +49,19 @@ import KaraokeText from '../components/KaraokeText.astro';
 
     <!-- ── Footer (dynamic liturgical season) ────────────── -->
     <footer class="app-footer" id="app-footer">
-      <span class="ftr-cross" aria-hidden="true">☨</span>
+      <span class="ftr-cross" aria-hidden="true">✝</span>
       <span id="season-tagline" class="ftr-tagline"></span>
-      <span class="ftr-cross" aria-hidden="true">☨</span>
+      <span class="ftr-cross" aria-hidden="true">✝</span>
       <span class="ftr-brand">rosari.org</span>
     </footer>
 
-    <!-- ── Audio status ─────────────────────────────── -->
+    <!-- ── Audio status ──────────────────────────────────── -->
     <div id="audio-loading" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;padding:.5rem 1.2rem;border-radius:2rem;font-size:.85rem;z-index:200;pointer-events:none;">⏳ Generating audio…</div>
     <div id="audio-error" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:#8b0000;color:#fff;padding:.6rem 1.4rem;border-radius:2rem;font-size:.85rem;z-index:200;max-width:90vw;text-align:center;cursor:pointer;" onclick="this.style.display='none'"></div>
 
-    <!-- ── Finished overlay ──────────────────────────── -->
+    <!-- ── Finished overlay ───────────────────────────────── -->
     <div id="finished-message" class="finished-overlay" style="display:none;" role="status">
-      <div class="fin-cross" aria-hidden="true">☨</div>
+      <div class="fin-cross" aria-hidden="true">✝</div>
       <p class="fin-text">Praised be Jesus Christ.</p>
       <p class="fin-sub">The Rosary is complete. Go in peace.</p>
       <button id="restart-btn" class="ctrl-main" style="margin-top:1.2rem;">Pray Again</button>
@@ -80,18 +80,21 @@ import KaraokeText from '../components/KaraokeText.astro';
   import { savePreferences, loadPreferences } from '../scripts/storage-manager.ts';
   import { parseVoiceInput } from '../scripts/voice-recognition.ts';
 
+  // ── State ──────────────────────────────────────────────────
   let engine: RosaryEngine | null = null;
   let currentLanguageCode = 'en-US';
   let currentLanguage = 'English';
   let currentVoiceDesc = 'aged Catholic priest, deep gravelly male voice, slow and reverent';
   let isRunning = false;
   let isStopping = false;
+  // Track the TTS-translated text so renderState() doesn't override it with English source text
   let currentTranslatedText = '';
   let currentTranslatedTitle = '';
 
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
 
+  // ── Liturgical season (set once on boot) ──────────────────
   function initSeasonalFooter(): void {
     const info = getLiturgicalSeason();
     const tagline = el('season-tagline');
@@ -100,6 +103,7 @@ import KaraokeText from '../components/KaraokeText.astro';
     if (dlBtn) dlBtn.title = info.downloadLabel;
   }
 
+  // ── Theme ──────────────────────────────────────────────────
   function applyTheme(theme: 'night' | 'day'): void {
     document.documentElement.setAttribute('data-theme', theme);
     const btn = el('theme-toggle');
@@ -121,6 +125,7 @@ import KaraokeText from '../components/KaraokeText.astro';
     }
   }
 
+  // ── Voice Prompt ───────────────────────────────────────────
   function showVoicePrompt(): void {
     const o = el('voice-prompt-overlay');
     if (o) { o.style.display = 'flex'; o.style.opacity = '1'; }
@@ -135,75 +140,99 @@ import KaraokeText from '../components/KaraokeText.astro';
     }
   }
 
+  // ── Karaoke: windowed display ──────────────────────────────
   function updateKaraoke(text: string, wordIdx: number, title: string): void {
     const container = el('karaoke-primary');
     if (!container) return;
 
     const words = text.split(/\s+/).filter(Boolean);
-    const BEFORE = 3, NEAR = 2, FAR = 2;
+    const BEFORE = 3;   // words shown before current
+    const NEAR   = 2;   // words at medium opacity after current
+    const FAR    = 2;   // words at low opacity after those
+
     const start = Math.max(0, wordIdx - BEFORE);
-    const end = Math.min(words.length, wordIdx + NEAR + FAR + 1);
+    const end   = Math.min(words.length, wordIdx + NEAR + FAR + 1);
 
     const parts: string[] = [];
+
     if (start > 0) parts.push(`<span class="kw kw-ellipsis">…</span>`);
+
     for (let i = start; i < end; i++) {
       const w = words[i]!;
       const dist = i - wordIdx;
       let cls = 'kw';
-      if (dist < 0) cls += ' kw-past';
-      else if (dist === 0) cls += ' kw-active';
+      if (dist < 0)          cls += ' kw-past';
+      else if (dist === 0)   cls += ' kw-active';
       else if (dist <= NEAR) cls += ' kw-next';
-      else cls += ' kw-far';
+      else                   cls += ' kw-far';
       parts.push(`<span class="${cls}">${w}</span>`);
     }
+
     if (end < words.length) parts.push(`<span class="kw kw-ellipsis">…</span>`);
+
     container.innerHTML = parts.join(' ');
+
     const titleEl = el('prayer-title');
     if (titleEl) titleEl.textContent = title;
   }
 
+  // ── Bead update ────────────────────────────────────────────
   function updateBeads(activeBeadIndex: number): void {
     (window as any).updateBeads?.(activeBeadIndex);
   }
 
+  // ── Mystery display ────────────────────────────────────────
   function updateMysteryDisplay(name: string, meditation: string, isMystery: boolean): void {
     el('mystery-announcement')?.style.setProperty('display', isMystery ? 'block' : 'none');
     const nameEl = el('mystery-name');
-    const medEl = el('mystery-meditation');
+    const medEl  = el('mystery-meditation');
     if (nameEl) nameEl.textContent = name;
-    if (medEl) medEl.textContent = meditation;
+    if (medEl)  medEl.textContent  = meditation;
   }
 
+  // ── Progress bar ───────────────────────────────────────────
   function updateProgress(step: number, total: number): void {
     const bar = el('progress-bar-inner');
     if (bar) bar.style.width = `${total > 0 ? (step / total) * 100 : 0}%`;
   }
 
+  // ── Localized prayer text lookup ──────────────────────────
   function getPrayerText(prayerKey: string): { text: string; title: string } {
     const prayer = getPrayerForLanguage(prayerKey, currentLanguage);
     return { text: prayer.text, title: prayer.title };
   }
 
+  // ── Main render ────────────────────────────────────────────
   function renderState(state: ReturnType<RosaryEngine['getState']>): void {
     applyMysteryTheme(state.mysteryType);
     updateBeads(state.currentBeadIndex);
+
     const isMystery = state.currentStep.prayer === 'mysteryAnnounce';
+
+    // Use the TTS-translated text if available so the karaoke language matches the audio.
+    // Fall back to the localised (English) source text only when translation hasn't arrived yet.
     const localPrayer = isMystery
       ? { text: state.currentMeditationText, title: state.currentPrayerTitle }
       : getPrayerText(state.currentStep.prayer);
-    const displayText = (!isMystery && currentTranslatedText) ? currentTranslatedText : (localPrayer.text || state.currentPrayerText);
+
+    const displayText  = (!isMystery && currentTranslatedText)  ? currentTranslatedText  : (localPrayer.text  || state.currentPrayerText);
     const displayTitle = (!isMystery && currentTranslatedTitle) ? currentTranslatedTitle : (localPrayer.title || state.currentPrayerTitle);
+
     updateKaraoke(displayText, state.wordIndex, displayTitle);
+
     updateMysteryDisplay(state.currentMysteryName, state.currentMeditationText, isMystery);
     updateProgress(state.currentStepIndex, state.totalSteps);
+
     const banner = el('mystery-banner');
     if (banner) banner.textContent = MYSTERY_SETS[state.mysteryType]?.name ?? '';
+
     const playBtn = el('play-pause-btn');
     if (playBtn) {
       playBtn.textContent = state.engineState === 'playing' ? '⏸ Pause'
         : state.engineState === 'paused' ? '▶ Resume'
         : '▶ Begin';
     }
+
     if (state.engineState === 'finished') {
       isRunning = false;
       const msg = el('finished-message');
@@ -211,13 +240,17 @@ import KaraokeText from '../components/KaraokeText.astro';
     }
   }
 
+  // ── Playback loop ──────────────────────────────────────────
   async function playNextStep(): Promise<void> {
     if (!engine || !isRunning || isStopping) return;
     const state = engine.getState();
     if (state.engineState !== 'playing') return;
+
     const step = state.currentStep;
     const isMystery = step.prayer === 'mysteryAnnounce';
-    let ttsText: string, displayTitle: string;
+
+    let ttsText: string;
+    let displayTitle: string;
     if (isMystery) {
       ttsText = `${state.currentPrayerTitle}. ${state.currentMeditationText}`;
       displayTitle = state.currentPrayerTitle;
@@ -226,48 +259,95 @@ import KaraokeText from '../components/KaraokeText.astro';
       ttsText = localized.text || state.currentPrayerText;
       displayTitle = localized.title || state.currentPrayerTitle;
     }
+
     const prayerKey = `${step.prayer}-d${step.decadeIndex ?? 0}-h${step.hailMaryIndex ?? 0}`;
+
+    // Clear previous translation so renderState shows source text while loading
     currentTranslatedText = '';
     currentTranslatedTitle = '';
+
+    // Show loading indicator while xAI generates audio
     const loadingEl = document.getElementById('audio-loading');
     if (loadingEl) loadingEl.style.display = 'block';
+
     try {
       await audioManager.playStep(
         ttsText,
-        { text: ttsText, language: currentLanguage, languageCode: currentLanguageCode, voiceDescription: currentVoiceDesc, prayerKey },
-        (translatedText: string) => { currentTranslatedText = translatedText; currentTranslatedTitle = displayTitle; updateKaraoke(translatedText, 0, displayTitle); if (loadingEl) loadingEl.style.display = 'none'; },
-        (wordIdx: number) => { engine?.setWordIndex(wordIdx); renderState(engine!.getState()); },
+        {
+          text: ttsText,
+          language: currentLanguage,
+          languageCode: currentLanguageCode,
+          voiceDescription: currentVoiceDesc,
+          prayerKey,
+        },
+        // Called as soon as audio is ready — store and display the translated text
+        (translatedText: string) => {
+          currentTranslatedText  = translatedText;
+          currentTranslatedTitle = displayTitle;
+          updateKaraoke(translatedText, 0, displayTitle);
+          if (loadingEl) loadingEl.style.display = 'none';
+        },
+        (wordIdx: number) => {
+          engine?.setWordIndex(wordIdx);
+          renderState(engine!.getState());
+        },
         () => {}
       );
     } catch (err) {
       const msg = (err as Error).message || String(err);
+      // Aborts are intentional (stop/skip/pause) — not errors
       if (/abort/i.test(msg)) return;
       console.error('[audio] playStep failed:', msg);
       isRunning = false;
       const errEl = document.getElementById('audio-error');
-      if (errEl) { errEl.textContent = `Audio error: ${msg}`; errEl.style.display = 'block'; }
+      if (errEl) {
+        errEl.textContent = `Audio error: ${msg}`;
+        errEl.style.display = 'block';
+      }
       return;
     } finally {
       if (loadingEl) loadingEl.style.display = 'none';
     }
+
     if (!isRunning || isStopping) return;
-    const pause = step.prayer === 'mysteryAnnounce' ? 2200 : step.prayer === 'fatimaPrayer' ? 900 : step.prayer === 'gloryBe' ? 700 : 450;
+
+    const pause = step.prayer === 'mysteryAnnounce' ? 2200
+      : step.prayer === 'fatimaPrayer' ? 900
+      : step.prayer === 'gloryBe' ? 700
+      : 450;
+
     await new Promise(r => setTimeout(r, pause));
     if (!isRunning || isStopping) return;
+
     const hasNext = engine!.nextStep();
     renderState(engine!.getState());
+
     if (hasNext && isRunning && !isStopping) playNextStep();
   }
 
-  function startLanguageSelection(): void { showVoicePrompt(); }
-  function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
-    currentLanguage = language;
-    currentLanguageCode = languageCode;
-    currentVoiceDesc = voiceDesc || 'aged Catholic priest, deep gravelly male voice, slow and reverent';
-    savePreferences({ language: currentLanguage, voiceDescription: currentVoiceDesc, theme: (document.documentElement.getAttribute('data-theme') as 'night' | 'day') || 'night' }).catch(() => {});
-    setTimeout(() => { hideVoicePrompt(); if (!isRunning) startRosary(); }, 800);
+  // ── Language selection ─────────────────────────────────────
+  function startLanguageSelection(): void {
+    showVoicePrompt();
   }
 
+  function handleLanguageSelected(language: string, languageCode: string, voiceDesc: string): void {
+    currentLanguage    = language;
+    currentLanguageCode = languageCode;
+    currentVoiceDesc   = voiceDesc || 'aged Catholic priest, deep gravelly male voice, slow and reverent';
+
+    savePreferences({
+      language: currentLanguage,
+      voiceDescription: currentVoiceDesc,
+      theme: (document.documentElement.getAttribute('data-theme') as 'night' | 'day') || 'night',
+    }).catch(() => {});
+
+    setTimeout(() => {
+      hideVoicePrompt();
+      if (!isRunning) startRosary();
+    }, 800);
+  }
+
+  // ── Start rosary ───────────────────────────────────────────
   function startRosary(): void {
     const mysteryType = getMysteryForDate(new Date());
     engine = new RosaryEngine(mysteryType);
@@ -280,25 +360,48 @@ import KaraokeText from '../components/KaraokeText.astro';
     playNextStep();
   }
 
+  // ── Controls ───────────────────────────────────────────────
   el('play-pause-btn')?.addEventListener('click', () => {
     audioManager.unlock();
     if (!engine) { startRosary(); return; }
     const state = engine.getState();
-    if (state.engineState === 'playing') { isStopping = true; audioManager.stop(); engine.pause(); isRunning = false; isStopping = false; renderState(engine.getState()); }
-    else if (state.engineState === 'paused') { engine.resume(); isRunning = true; renderState(engine.getState()); playNextStep(); }
-    else { isRunning = true; engine.start(); renderState(engine.getState()); playNextStep(); }
+    if (state.engineState === 'playing') {
+      // Pause: stop audio immediately (cancels in-flight fetch + clears timers → karaoke freezes)
+      isStopping = true;
+      audioManager.stop();
+      engine.pause();
+      isRunning = false;
+      isStopping = false;
+      renderState(engine.getState());
+    } else if (state.engineState === 'paused') {
+      // Resume: replay the current prayer from the start (no double-audio risk)
+      engine.resume();
+      isRunning = true;
+      renderState(engine.getState());
+      playNextStep();
+    } else {
+      isRunning = true; engine.start(); renderState(engine.getState()); playNextStep();
+    }
   });
 
   el('prev-btn')?.addEventListener('click', () => {
     if (!engine) return;
     isStopping = true; audioManager.stop();
-    setTimeout(() => { isStopping = false; engine!.prevStep(); renderState(engine!.getState()); if (isRunning) playNextStep(); }, 100);
+    setTimeout(() => {
+      isStopping = false; engine!.prevStep();
+      renderState(engine!.getState());
+      if (isRunning) playNextStep();
+    }, 100);
   });
 
   el('next-btn')?.addEventListener('click', () => {
     if (!engine) return;
     isStopping = true; audioManager.stop();
-    setTimeout(() => { isStopping = false; engine!.nextStep(); renderState(engine!.getState()); if (isRunning) playNextStep(); }, 100);
+    setTimeout(() => {
+      isStopping = false; engine!.nextStep();
+      renderState(engine!.getState());
+      if (isRunning) playNextStep();
+    }, 100);
   });
 
   el('theme-toggle')?.addEventListener('click', () => {
@@ -314,15 +417,16 @@ import KaraokeText from '../components/KaraokeText.astro';
   });
 
   el('restart-btn')?.addEventListener('click', () => {
-    audioManager.unlock();
+    audioManager.unlock(); // Re-unlock after long idle at finished screen
     el('finished-message')!.style.display = 'none';
     isRunning = false; isStopping = false; audioManager.stop();
     startRosary();
   });
 
   el('language-text-submit')?.addEventListener('click', () => {
-    audioManager.unlock();
+    audioManager.unlock(); // Must unlock in gesture — iOS may have consumed the { once } listener
     const input = el<HTMLInputElement>('language-text-input');
+    // Default to English if input is empty rather than silently failing
     const text = input?.value.trim() || 'English';
     const parsed = parseVoiceInput(text);
     handleLanguageSelected(parsed.language, parsed.languageCode, parsed.voiceDescription);
@@ -334,76 +438,301 @@ import KaraokeText from '../components/KaraokeText.astro';
     const info = getLiturgicalSeason();
     btn.title = 'Caching…';
     btn.setAttribute('disabled', 'true');
+
     const mysteryType = getMysteryForDate();
     const sequence = buildRosarySequence(mysteryType);
     let cached = 0;
+
     for (const step of sequence) {
       let text = '';
-      if (step.prayer === 'mysteryAnnounce') { text = MYSTERY_SETS[mysteryType].mysteries[step.mysteryIndex ?? 0]?.name ?? ''; }
-      else { text = getPrayerForLanguage(step.prayer, currentLanguage).text; }
+      if (step.prayer === 'mysteryAnnounce') {
+        text = MYSTERY_SETS[mysteryType].mysteries[step.mysteryIndex ?? 0]?.name ?? '';
+      } else {
+        text = getPrayerForLanguage(step.prayer, currentLanguage).text;
+      }
       if (!text) continue;
-      await audioManager.generateAudio({ text, language: currentLanguage, languageCode: currentLanguageCode, voiceDescription: currentVoiceDesc, prayerKey: `${step.prayer}-${step.decadeIndex ?? 0}-${step.hailMaryIndex ?? 0}` });
+
+      await audioManager.generateAudio({
+        text,
+        language: currentLanguage,
+        languageCode: currentLanguageCode,
+        voiceDescription: currentVoiceDesc,
+        prayerKey: `${step.prayer}-${step.decadeIndex ?? 0}-${step.hailMaryIndex ?? 0}`,
+      });
       cached++;
     }
+
     btn.title = info.downloadLabel;
     btn.removeAttribute('disabled');
   });
 
-  document.addEventListener('click', () => { audioManager.unlock(); }, { once: true });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') audioManager.unlock(); });
+  document.addEventListener('click', () => {
+    audioManager.unlock();
+  }, { once: true });
 
+  // Re-unlock AudioContext when user returns to the tab (iOS/Android auto-suspend on background)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') audioManager.unlock();
+  });
+
+  // ── Boot ────────────────────────────────────────────────────
   async function init() {
     initSeasonalFooter();
     const prefs = await loadPreferences();
     applyTheme(prefs?.theme || detectAutoTheme());
     applyMysteryTheme(getMysteryForDate().toString());
+
     const banner = el('mystery-banner');
     if (banner) banner.textContent = MYSTERY_SETS[getMysteryForDate()]?.name ?? '';
+
     if (prefs?.language) {
-      currentLanguage = prefs.language;
-      currentVoiceDesc = prefs.voiceDescription || currentVoiceDesc;
+      currentLanguage    = prefs.language;
+      currentVoiceDesc   = prefs.voiceDescription || currentVoiceDesc;
+
       const resume = el('resume-banner');
       if (resume) {
         resume.style.display = 'flex';
         const langSpan = resume.querySelector('.resume-lang');
         if (langSpan) langSpan.textContent = prefs.language;
       }
-      el('resume-yes-btn')?.addEventListener('click', () => { audioManager.unlock(); el('resume-banner')?.remove(); hideVoicePrompt(); startRosary(); });
-      el('resume-no-btn')?.addEventListener('click', () => { el('resume-banner')?.remove(); startLanguageSelection(); });
-    } else { startLanguageSelection(); }
+
+      el('resume-yes-btn')?.addEventListener('click', () => {
+        audioManager.unlock(); // Must unlock AudioContext synchronously inside gesture
+        el('resume-banner')?.remove();
+        hideVoicePrompt();
+        startRosary();
+      });
+      el('resume-no-btn')?.addEventListener('click', () => {
+        el('resume-banner')?.remove();
+        startLanguageSelection();
+      });
+    } else {
+      startLanguageSelection();
+    }
   }
+
   init().catch(console.error);
 </script>
 
 <style>
-  .rosary-app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); padding-top: env(safe-area-inset-top, 0); padding-bottom: env(safe-area-inset-bottom, 0); }
-  .app-header { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0.8rem; border-bottom: 1px solid var(--border-dim); background: var(--bg-glass); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); flex-shrink: 0; gap: 0.5rem; z-index: 5; min-height: 42px; }
-  .hdr-left { display: flex; align-items: center; gap: 0.55rem; overflow: hidden; min-width: 0; }
-  .hdr-cross { font-size: 1.05rem; color: var(--gold-dim); text-shadow: 0 0 10px var(--gold-glow); flex-shrink: 0; }
-  .hdr-title { font-family: 'Cinzel', serif; font-size: clamp(1rem, 3vw, 1.4rem); font-weight: 700; letter-spacing: 0.14em; color: var(--gold-light); text-shadow: 0 0 16px var(--gold-glow); flex-shrink: 0; }
-  .hdr-mystery { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: clamp(0.68rem, 2vw, 0.85rem); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .hdr-right { display: flex; gap: 0.3rem; flex-shrink: 0; }
-  .hdr-btn { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: 1px solid var(--border-dim); color: var(--text-dim); font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-  .hdr-btn:hover { border-color: var(--gold-dim); background: rgba(201,168,76,0.08); }
-  .progress-bar-wrap { height: 2px; background: var(--border-dim); flex-shrink: 0; overflow: hidden; }
-  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0%; transition: width 0.5s ease; box-shadow: 0 0 6px var(--accent-glow); }
-  .bead-stage { flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: stretch; justify-content: center; }
-  .text-stage { flex-shrink: 0; border-top: 1px solid var(--border-dim); background: rgba(10, 9, 6, 0.6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; min-height: 0; }
-  .controls-bar { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 0.6rem 1rem; border-top: 1px solid var(--border-dim); background: var(--bg-glass); flex-shrink: 0; }
-  .ctrl-skip { width: 44px; height: 44px; border-radius: 50%; background: transparent; border: 1px solid var(--border); color: var(--text-dim); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  /* ── Full-screen app shell ──────────────────────────────── */
+  .rosary-app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+    /* Safe area for notch/home bar */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.8rem;
+    border-bottom: 1px solid var(--border-dim);
+    background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    flex-shrink: 0;
+    gap: 0.5rem;
+    z-index: 5;
+    min-height: 42px;
+  }
+
+  .hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .hdr-cross {
+    font-size: 1.05rem;
+    color: var(--gold-dim);
+    text-shadow: 0 0 10px var(--gold-glow);
+    flex-shrink: 0;
+  }
+
+  .hdr-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1rem, 3vw, 1.4rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--gold-light);
+    text-shadow: 0 0 16px var(--gold-glow);
+    flex-shrink: 0;
+  }
+
+  .hdr-mystery {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.68rem, 2vw, 0.85rem);
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hdr-right {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+
+  .hdr-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border-dim);
+    color: var(--text-dim);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .hdr-btn:hover {
+    border-color: var(--gold-dim);
+    background: rgba(201,168,76,0.08);
+  }
+
+  /* ── Progress bar ────────────────────────────────────────── */
+  .progress-bar-wrap {
+    height: 2px;
+    background: var(--border-dim);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 6px var(--accent-glow);
+  }
+
+  /* ── Bead stage: takes all remaining vertical space ──────── */
+  .bead-stage {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  /* ── Text stage ──────────────────────────────────────────── */
+  .text-stage {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-dim);
+    background: rgba(10, 9, 6, 0.6);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  /* ── Controls bar ────────────────────────────────────────── */
+  .controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--border-dim);
+    background: var(--bg-glass);
+    flex-shrink: 0;
+  }
+
+  .ctrl-skip {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
   .ctrl-skip:hover { border-color: var(--gold-dim); color: var(--gold-light); background: rgba(201,168,76,0.07); }
-  .ctrl-main { padding: 0.6rem 2.2rem; background: linear-gradient(135deg, var(--accent), var(--accent)); color: #fff; border-radius: 28px; font-family: 'Cinzel', serif; font-size: clamp(0.8rem, 2.5vw, 1rem); font-weight: 600; letter-spacing: 0.08em; box-shadow: 0 4px 18px var(--accent-glow); transition: all 0.25s; border: 1px solid rgba(255,255,255,0.15); min-width: 120px; }
+
+  .ctrl-main {
+    padding: 0.6rem 2.2rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent));
+    color: #fff;
+    border-radius: 28px;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    box-shadow: 0 4px 18px var(--accent-glow);
+    transition: all 0.25s;
+    border: 1px solid rgba(255,255,255,0.15);
+    min-width: 120px;
+  }
   .ctrl-main:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); filter: brightness(1.1); }
   .ctrl-main:active { transform: translateY(0); }
-  .ctrl-dl { width: 44px; height: 44px; border-radius: 50%; background: transparent; border: 1px solid var(--border-dim); color: var(--text-muted); font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+
+  .ctrl-dl {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border-dim);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
   .ctrl-dl:hover { border-color: var(--border); color: var(--text-dim); }
   .ctrl-dl:disabled { opacity: 0.5; cursor: not-allowed; }
-  .app-footer { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.3rem 1rem; border-top: 1px solid var(--border-dim); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: clamp(0.68rem, 2vw, 0.82rem); color: var(--text-muted); flex-shrink: 0; background: var(--bg); opacity: 0.75; }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  .app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.3rem 1rem;
+    border-top: 1px solid var(--border-dim);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.68rem, 2vw, 0.82rem);
+    color: var(--text-muted);
+    flex-shrink: 0;
+    background: var(--bg);
+    opacity: 0.75;
+  }
+
   .ftr-cross { color: var(--gold-dim); }
   .ftr-tagline { letter-spacing: 0.04em; }
   .ftr-brand { font-size: 0.75em; opacity: 0.6; letter-spacing: 0.06em; }
-  .finished-overlay { position: fixed; inset: 0; z-index: 50; background: radial-gradient(ellipse at center, #0a0800 0%, #020200 100%); flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; text-align: center; padding: 2rem; animation: fadeIn 1.5s ease; }
+
+  /* ── Finished overlay ────────────────────────────────────── */
+  .finished-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: radial-gradient(ellipse at center, #0a0800 0%, #020200 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 2rem;
+    animation: fadeIn 1.5s ease;
+  }
+
   .fin-cross { font-size: clamp(2rem, 8vw, 3.5rem); color: var(--gold); text-shadow: 0 0 30px var(--gold-glow); animation: fadeInUp 1s ease; }
-  .fin-text { font-family: 'Cinzel', serif; font-size: clamp(1.1rem, 4vw, 1.8rem); color: var(--gold-light); text-shadow: 0 0 20px var(--gold-glow); letter-spacing: 0.1em; animation: fadeInUp 1s 0.3s ease both; }
-  .fin-sub { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: clamp(0.9rem, 3vw, 1.1rem); color: var(--text-dim); animation: fadeInUp 1s 0.6s ease both; }
+  .fin-text  { font-family: 'Cinzel', serif; font-size: clamp(1.1rem, 4vw, 1.8rem); color: var(--gold-light); text-shadow: 0 0 20px var(--gold-glow); letter-spacing: 0.1em; animation: fadeInUp 1s 0.3s ease both; }
+  .fin-sub   { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: clamp(0.9rem, 3vw, 1.1rem); color: var(--text-dim); animation: fadeInUp 1s 0.6s ease both; }
 </style>

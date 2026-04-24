@@ -1,4 +1,8 @@
-import { PRAYERS, MYSTERY_SETS, buildRosarySequence, type MysteryType } from './rosary-data.ts';
+// ============================================================
+// rosary-engine.ts — State machine for the rosary prayer flow
+// ============================================================
+
+import { PRAYERS, MYSTERY_SETS, buildRosarySequence, type MysteryType, type RosaryStep } from './rosary-data.ts';
 
 export type EngineState = 'idle' | 'playing' | 'paused' | 'finished';
 
@@ -7,7 +11,7 @@ export interface RosaryState {
   mysteryType: MysteryType;
   currentStepIndex: number;
   totalSteps: number;
-  currentStep: any;
+  currentStep: RosaryStep;
   currentPrayerText: string;
   currentPrayerTitle: string;
   currentBeadIndex: number;
@@ -19,15 +23,17 @@ export interface RosaryState {
   voiceDescription: string;
 }
 
+type StateChangeCallback = (state: RosaryState) => void;
+
 export class RosaryEngine {
   private mysteryType: MysteryType;
-  private sequence: any[] = [];
+  private sequence: RosaryStep[];
   private currentStepIndex = 0;
   private engineState: EngineState = 'idle';
   private language = 'English';
   private voiceDescription = 'aged Catholic priest, deep gravelly male voice, slow and reverent';
   private wordIndex = 0;
-  private listeners: ((state: RosaryState) => void)[] = [];
+  private listeners: StateChangeCallback[] = [];
 
   constructor(mysteryType: MysteryType) {
     this.mysteryType = mysteryType;
@@ -40,30 +46,50 @@ export class RosaryEngine {
     this.emit();
   }
 
-  subscribe(cb: (state: RosaryState) => void): () => void {
+  subscribe(cb: StateChangeCallback): () => void {
     this.listeners.push(cb);
     return () => { this.listeners = this.listeners.filter(l => l !== cb); };
   }
 
   private emit(): void {
-    this.listeners.forEach(l => l(this.getState()));
+    const state = this.getState();
+    this.listeners.forEach(l => l(state));
   }
 
   getState(): RosaryState {
-    const step = this.sequence[this.currentStepIndex];
+    const step = this.sequence[this.currentStepIndex] ?? this.sequence[0]!;
     const mysterySet = MYSTERY_SETS[this.mysteryType];
+    const mystery = step.mysteryIndex !== undefined ? mysterySet.mysteries[step.mysteryIndex] : null;
+
+    let prayerText = '';
+    let prayerTitle = '';
+
+    if (step.prayer === 'mysteryAnnounce') {
+      const m = mystery ?? mysterySet.mysteries[0]!;
+      const decNum = (step.decadeIndex ?? 0) + 1;
+      prayerTitle = `${decNum}. ${m.name}`;
+      prayerText = m.meditation;
+    } else {
+      const p = PRAYERS[step.prayer];
+      prayerTitle = p?.title ?? '';
+      prayerText = p?.text ?? '';
+    }
+
+    const currentMysteryIndex = step.decadeIndex ?? step.mysteryIndex ?? 0;
+    const currentMystery = mysterySet.mysteries[currentMysteryIndex];
+
     return {
       engineState: this.engineState,
       mysteryType: this.mysteryType,
       currentStepIndex: this.currentStepIndex,
       totalSteps: this.sequence.length,
       currentStep: step,
-      currentPrayerText: '',
-      currentPrayerTitle: '',
-      currentBeadIndex: -1,
-      currentDecadeIndex: -1,
-      currentMysteryName: '',
-      currentMeditationText: '',
+      currentPrayerText: prayerText,
+      currentPrayerTitle: prayerTitle,
+      currentBeadIndex: step.beadIndex ?? -1,
+      currentDecadeIndex: step.decadeIndex ?? -1,
+      currentMysteryName: currentMystery?.name ?? '',
+      currentMeditationText: currentMystery?.meditation ?? '',
       wordIndex: this.wordIndex,
       language: this.language,
       voiceDescription: this.voiceDescription,
@@ -111,6 +137,18 @@ export class RosaryEngine {
   setWordIndex(idx: number): void {
     this.wordIndex = idx;
     this.emit();
+  }
+
+  jumpToStep(idx: number): void {
+    if (idx >= 0 && idx < this.sequence.length) {
+      this.currentStepIndex = idx;
+      this.wordIndex = 0;
+      this.emit();
+    }
+  }
+
+  getMysterySet() {
+    return MYSTERY_SETS[this.mysteryType];
   }
 
   getSequence() {

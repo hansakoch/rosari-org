@@ -82,18 +82,58 @@ export const PRAYERS: Record<string, Prayer> = {
   },
 };
 
-// Brief excerpt of PRAYERS_LATIN and other data (truncated for push API size limits)
+// ── Latin Prayers ───────────────────────────────────────────
+// Traditional ecclesiastical Latin (Tridentine / Novus Ordo Latin)
+
 export const PRAYERS_LATIN: Record<string, Prayer> = {
-  signOfCross: { title: 'Signum Crucis', text: 'In nomine Patris, et Filii, et Spiritus Sancti. Amen.', words: 'In nomine Patris, et Filii, et Spiritus Sancti. Amen.'.split(' ') },
-  apostlesCreed: { title: 'Symbolum Apostolorum', text: 'Credo in Deum Patrem omnipotentem...', words: [] },
-  ourFather: { title: 'Pater Noster', text: 'Pater noster, qui es in caelis...', words: [] },
-  hailMary: { title: 'Ave Maria', text: 'Ave Maria, gratia plena...', words: [] },
-  gloryBe: { title: 'Gloria Patri', text: 'Gloria Patri, et Filio...', words: [] },
-  fatimaPrayer: { title: 'Oratio Fatimae', text: 'Domine Iesu...', words: [] },
-  hailHolyQueen: { title: 'Salve Regina', text: 'Salve, Regina...', words: [] },
-  closingPrayer: { title: 'Oratio Finalis', text: 'Deus, cuius Unigenitus...', words: [] },
-  goInPeace: { title: '', text: 'Ite in pace.', words: ['Ite', 'in', 'pace.'] },
+  signOfCross: {
+    title: 'Signum Crucis',
+    text: 'In nomine Patris, et Filii, et Spiritus Sancti. Amen.',
+    words: 'In nomine Patris, et Filii, et Spiritus Sancti. Amen.'.split(' '),
+  },
+  apostlesCreed: {
+    title: 'Symbolum Apostolorum',
+    text: 'Credo in Deum Patrem omnipotentem, Creatorem caeli et terrae, et in Iesum Christum, Filium eius unicum, Dominum nostrum, qui conceptus est de Spiritu Sancto, natus ex Maria Virgine, passus sub Pontio Pilato, crucifixus, mortuus, et sepultus; descendit ad inferos; tertia die resurrexit a mortuis; ascendit ad caelos; sedet ad dexteram Dei Patris omnipotentis; inde venturus est iudicare vivos et mortuos. Credo in Spiritum Sanctum, sanctam Ecclesiam catholicam, Sanctorum communionem, remissionem peccatorum, carnis resurrectionem, vitam aeternam. Amen.',
+    words: 'Credo in Deum Patrem omnipotentem, Creatorem caeli et terrae, et in Iesum Christum, Filium eius unicum, Dominum nostrum, qui conceptus est de Spiritu Sancto, natus ex Maria Virgine, passus sub Pontio Pilato, crucifixus, mortuus, et sepultus; descendit ad inferos; tertia die resurrexit a mortuis; ascendit ad caelos; sedet ad dexteram Dei Patris omnipotentis; inde venturus est iudicare vivos et mortuos. Credo in Spiritum Sanctum, sanctam Ecclesiam catholicam, Sanctorum communionem, remissionem peccatorum, carnis resurrectionem, vitam aeternam. Amen.'.split(' '),
+  },
+  ourFather: {
+    title: 'Pater Noster',
+    text: 'Pater noster, qui es in caelis, sanctificetur nomen tuum. Adveniat regnum tuum. Fiat voluntas tua, sicut in caelo et in terra. Panem nostrum quotidianum da nobis hodie, et dimitte nobis debita nostra sicut et nos dimittimus debitoribus nostris. Et ne nos inducas in tentationem, sed libera nos a malo. Amen.',
+    words: 'Pater noster, qui es in caelis, sanctificetur nomen tuum. Adveniat regnum tuum. Fiat voluntas tua, sicut in caelo et in terra. Panem nostrum quotidianum da nobis hodie, et dimitte nobis debita nostra sicut et nos dimittimus debitoribus nostris. Et ne nos inducas in tentationem, sed libera nos a malo. Amen.'.split(' '),
+  },
+  hailMary: {
+    title: 'Ave Maria',
+    text: 'Ave Maria, gratia plena, Dominus tecum. Benedicta tu in mulieribus, et benedictus fructus ventris tui, Iesus. Sancta Maria, Mater Dei, ora pro nobis peccatoribus, nunc et in hora mortis nostrae. Amen.',
+    words: 'Ave Maria, gratia plena, Dominus tecum. Benedicta tu in mulieribus, et benedictus fructus ventris tui, Iesus. Sancta Maria, Mater Dei, ora pro nobis peccatoribus, nunc et in hora mortis nostrae. Amen.'.split(' '),
+  },
+  gloryBe: {
+    title: 'Gloria Patri',
+    text: 'Gloria Patri, et Filio, et Spiritui Sancto. Sicut erat in principio, et nunc et semper, et in saecula saeculorum. Amen.',
+    words: 'Gloria Patri, et Filio, et Spiritui Sancto. Sicut erat in principio, et nunc et semper, et in saecula saeculorum. Amen.'.split(' '),
+  },
+  fatimaPrayer: {
+    title: 'Oratio Fatimae',
+    text: 'Domine Iesu, dimitte nobis debita nostra, libera nos ab igne inferni, adduc in caelum omnes animas, praesertim illas quae maxime indigent misericordia tua.',
+    words: 'Domine Iesu, dimitte nobis debita nostra, libera nos ab igne inferni, adduc in caelum omnes animas, praesertim illas quae maxime indigent misericordia tua.'.split(' '),
+  },
+  hailHolyQueen: {
+    title: 'Salve Regina',
+    text: 'Salve, Regina, Mater misericordiae, vita, dulcedo, et spes nostra, salve. Ad te clamamus exsules filii Hevae. Ad te suspiramus gementes et flentes in hac lacrimarum valle. Eia ergo, Advocata nostra, illos tuos misericordes oculos ad nos converte. Et Iesum, benedictum fructum ventris tui, nobis post hoc exsilium ostende. O clemens, O pia, O dulcis Virgo Maria! Ora pro nobis, sancta Dei Genitrix, ut digni efficiamur promissionibus Christi.',
+    words: 'Salve, Regina, Mater misericordiae, vita, dulcedo, et spes nostra, salve. Ad te clamamus exsules filii Hevae. Ad te suspiramus gementes et flentes in hac lacrimarum valle. Eia ergo, Advocata nostra, illos tuos misericordes oculos ad nos converte. Et Iesum, benedictum fructum ventris tui, nobis post hoc exsilium ostende. O clemens, O pia, O dulcis Virgo Maria! Ora pro nobis, sancta Dei Genitrix, ut digni efficiamur promissionibus Christi.'.split(' '),
+  },
+  closingPrayer: {
+    title: 'Oratio Finalis',
+    text: 'Deus, cuius Unigenitus per vitam, mortem et resurrectionem suam nobis salutis aeternae praemia comparavit: concede, quaesumus; ut haec mysteria sacratissimo beatae Mariae Virginis Rosario recolentes, et imitemur quod continent, et quod promittunt assequamur. Per Christum Dominum nostrum. Amen.',
+    words: 'Deus, cuius Unigenitus per vitam, mortem et resurrectionem suam nobis salutis aeternae praemia comparavit: concede, quaesumus; ut haec mysteria sacratissimo beatae Mariae Virginis Rosario recolentes, et imitemur quod continent, et quod promittunt assequamur. Per Christum Dominum nostrum. Amen.'.split(' '),
+  },
+  goInPeace: {
+    title: '',
+    text: 'Ite in pace.',
+    words: ['Ite', 'in', 'pace.'],
+  },
 };
+
+// ── Language-aware prayer lookup ────────────────────────────
 
 export function getPrayerForLanguage(prayerKey: string, language: string): Prayer {
   const lang = language.toLowerCase().trim();
@@ -101,6 +141,8 @@ export function getPrayerForLanguage(prayerKey: string, language: string): Praye
   const map = isLatin ? PRAYERS_LATIN : PRAYERS;
   return map[prayerKey] ?? PRAYERS[prayerKey] ?? { title: '', text: '', words: [] };
 }
+
+// ── Mysteries ──────────────────────────────────────────────
 
 export const MYSTERY_SETS: Record<MysteryType, MysterySet> = {
   joyful: {
@@ -120,11 +162,11 @@ export const MYSTERY_SETS: Record<MysteryType, MysterySet> = {
     type: 'sorrowful',
     color: { primary: '#8b0000', secondary: '#cc2200', bg: '#080000', text: '#ff6666' },
     mysteries: [
-      { name: 'The Agony in the Garden', meditation: 'Jesus prays in the Garden of Gethsemane, sweating blood in agony.' },
+      { name: 'The Agony in the Garden', meditation: 'Jesus prays in the Garden of Gethsemane, sweating blood in agony, asking that this cup pass from Him, yet submitting to the Father\'s will.' },
       { name: 'The Scourging at the Pillar', meditation: 'Jesus is bound to a pillar and scourged mercilessly by the Roman soldiers.' },
-      { name: 'The Crowning with Thorns', meditation: 'The soldiers weave a crown of thorns and press it onto the sacred head of Jesus.' },
-      { name: 'The Carrying of the Cross', meditation: 'Jesus carries His heavy Cross through the streets of Jerusalem to Calvary.' },
-      { name: 'The Crucifixion', meditation: 'Jesus is nailed to the Cross and raised up between two thieves.' },
+      { name: 'The Crowning with Thorns', meditation: 'The soldiers weave a crown of thorns and press it onto the sacred head of Jesus, mocking Him as King.' },
+      { name: 'The Carrying of the Cross', meditation: 'Jesus carries His heavy Cross through the streets of Jerusalem to Calvary, falling three times along the way.' },
+      { name: 'The Crucifixion', meditation: 'Jesus is nailed to the Cross and raised up between two thieves. He forgives His executioners and gives up His spirit.' },
     ],
   },
   glorious: {
@@ -134,9 +176,9 @@ export const MYSTERY_SETS: Record<MysteryType, MysterySet> = {
     mysteries: [
       { name: 'The Resurrection', meditation: 'Jesus Christ rises from the dead on the third day, glorious and victorious over sin and death.' },
       { name: 'The Ascension', meditation: 'Forty days after His Resurrection, Jesus ascends into Heaven in the presence of His disciples.' },
-      { name: 'The Descent of the Holy Spirit', meditation: 'The Holy Spirit descends upon the Blessed Virgin Mary and the Apostles at Pentecost.' },
-      { name: 'The Assumption of Mary', meditation: 'The Blessed Virgin Mary is assumed body and soul into the glory of Heaven.' },
-      { name: 'The Coronation of Mary', meditation: 'The Blessed Virgin Mary is crowned Queen of Heaven and Earth.' },
+      { name: 'The Descent of the Holy Spirit', meditation: 'The Holy Spirit descends upon the Blessed Virgin Mary and the Apostles in the Upper Room at Pentecost.' },
+      { name: 'The Assumption of Mary', meditation: 'At the end of her earthly life, the Blessed Virgin Mary is assumed body and soul into the glory of Heaven.' },
+      { name: 'The Coronation of Mary', meditation: 'The Blessed Virgin Mary is crowned Queen of Heaven and Earth, of angels and of men.' },
     ],
   },
   luminous: {
@@ -144,48 +186,185 @@ export const MYSTERY_SETS: Record<MysteryType, MysterySet> = {
     type: 'luminous',
     color: { primary: '#7b1fa2', secondary: '#81c784', bg: '#040008', text: '#ce93d8' },
     mysteries: [
-      { name: 'The Baptism of Jesus', meditation: 'Jesus is baptized in the Jordan River by John.' },
-      { name: 'The Wedding at Cana', meditation: 'Jesus performs His first public miracle, transforming water into wine.' },
-      { name: 'The Proclamation of the Kingdom', meditation: 'Jesus proclaims the Kingdom of God and calls all to repentance.' },
-      { name: 'The Transfiguration', meditation: 'Jesus is transfigured on Mount Tabor with glory.' },
-      { name: 'The Institution of the Eucharist', meditation: 'At the Last Supper, Jesus gives us His Body and Blood.' },
+      { name: 'The Baptism of Jesus', meditation: 'Jesus is baptized in the Jordan River by John. The heavens open, the Spirit descends as a dove, and the Father\'s voice proclaims: "This is my beloved Son."' },
+      { name: 'The Wedding at Cana', meditation: 'At the intercession of His Mother, Jesus performs His first public miracle, transforming water into wine.' },
+      { name: 'The Proclamation of the Kingdom', meditation: 'Jesus proclaims the Kingdom of God, calls all to repentance, and forgives the sins of those who draw near to Him with faith.' },
+      { name: 'The Transfiguration', meditation: 'Jesus is transfigured on Mount Tabor. His face shines like the sun and His garments become white as light.' },
+      { name: 'The Institution of the Eucharist', meditation: 'At the Last Supper, Jesus takes bread and wine and gives us His Body and Blood — the source and summit of Christian life.' },
     ],
   },
 };
 
+// ── Weekday Mystery Calculator ─────────────────────────────
+
 export function getMysteryForDate(date: Date = new Date()): MysteryType {
-  const day = date.getDay();
-  if (day === 0 || day === 3) return 'glorious';
-  if (day === 1 || day === 6) return 'joyful';
-  if (day === 2 || day === 5) return 'sorrowful';
-  return 'luminous';
+  const day = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  if (day === 0 || day === 3) return 'glorious';   // Sun, Wed
+  if (day === 1 || day === 6) return 'joyful';      // Mon, Sat
+  if (day === 2 || day === 5) return 'sorrowful';   // Tue, Fri
+  return 'luminous';                                 // Thu
 }
 
-export function getLiturgicalSeason(): { season: string; name: string; tagline: string; downloadLabel: string } {
+// ── Liturgical Season Calculator ────────────────────────────
+// Accurate for Western Roman Rite; never needs manual updating.
+
+function computeEaster(year: number): Date {
+  // Anonymous Gregorian algorithm
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31); // 1-indexed
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function computeAdventStart(year: number): Date {
+  // 4th Sunday before Christmas (= 3 Sundays before nearest Sunday to Christmas)
+  const xmasDay = new Date(Date.UTC(year, 11, 25)).getUTCDay();
+  // Days back to reach the Sunday on or before Dec 25
+  const toSunday = xmasDay === 0 ? 0 : xmasDay;
+  // Advent = 3 weeks (21 days) before that Sunday
+  return new Date(Date.UTC(year, 11, 25 - toSunday - 21));
+}
+
+function computeEpiphany(year: number): Date {
+  // In most dioceses Epiphany is Jan 6; Season of Christmas ends with
+  // Baptism of the Lord (Sunday after Epiphany, or Jan 13 at latest)
+  const jan6Day = new Date(Date.UTC(year, 0, 6)).getUTCDay();
+  const daysToNextSunday = jan6Day === 0 ? 7 : 7 - jan6Day;
+  const epiphany = new Date(Date.UTC(year, 0, 6 + daysToNextSunday)); // Sunday after Jan 6
+  const baptism = new Date(epiphany);
+  baptism.setUTCDate(baptism.getUTCDate() + 7); // Baptism of Lord = Sunday after Epiphany
+  return baptism;
+}
+
+export interface LiturgicalSeasonInfo {
+  season: LiturgicalSeason;
+  name: string;
+  tagline: string;
+  downloadLabel: string; // e.g. "Download for Lent"
+}
+
+export function getLiturgicalSeason(date: Date = new Date()): LiturgicalSeasonInfo {
+  // Normalise to UTC date-only for comparison
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const year = d.getUTCFullYear();
+
+  const easter      = computeEaster(year);
+  const ashWed      = new Date(easter); ashWed.setUTCDate(easter.getUTCDate() - 46);
+  const pentecost   = new Date(easter); pentecost.setUTCDate(easter.getUTCDate() + 49);
+  const advent      = computeAdventStart(year);
+  const prevAdvent  = computeAdventStart(year - 1);
+  const baptismEnd  = computeEpiphany(year);        // end of Christmas (current Jan)
+  const christmasStart = new Date(Date.UTC(year - 1, 11, 25)); // Dec 25 of prev year
+
+  // Check each season in chronological order
+  if (d >= advent) {
+    return { season: 'advent', name: 'Advent', tagline: 'Maranatha — Come, Lord Jesus', downloadLabel: 'Download for Advent' };
+  }
+  // Christmas: Dec 25 → Baptism of the Lord (~Jan 12)
+  if ((d >= new Date(Date.UTC(year, 11, 25))) || d <= baptismEnd) {
+    return { season: 'christmas', name: 'Christmas', tagline: 'Gloria in Excelsis Deo', downloadLabel: 'Download for Christmas' };
+  }
+  // Lent: Ash Wednesday → Holy Saturday
+  if (d >= ashWed && d < easter) {
+    return { season: 'lent', name: 'Lent', tagline: 'Memento homo, quia pulvis es', downloadLabel: 'Download for Lent' };
+  }
+  // Easter: Easter Sunday → Pentecost
+  if (d >= easter && d <= pentecost) {
+    return { season: 'easter', name: 'Easter', tagline: 'Alleluia — Christ is risen', downloadLabel: 'Download for Easter' };
+  }
+  // Everything else: Ordinary Time
   return { season: 'ordinary', name: 'Ordinary Time', tagline: 'Ave Maria, gratia plena', downloadLabel: 'Download for offline use' };
 }
 
-export function buildRosarySequence(mysteryType: MysteryType) {
-  const steps: any[] = [];
+// ── Rosary Sequence Builder ─────────────────────────────────
+
+export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
+  const steps: RosaryStep[] = [];
+
   steps.push({ prayer: 'signOfCross', beadIndex: -1 });
   steps.push({ prayer: 'apostlesCreed', beadIndex: 0 });
+  steps.push({ prayer: 'ourFather', beadIndex: 1 });
+  steps.push({ prayer: 'hailMary', hailMaryIndex: 0, beadIndex: 2 });
+  steps.push({ prayer: 'hailMary', hailMaryIndex: 1, beadIndex: 3 });
+  steps.push({ prayer: 'hailMary', hailMaryIndex: 2, beadIndex: 4 });
+  steps.push({ prayer: 'gloryBe', beadIndex: 5 });
+
   for (let d = 0; d < 5; d++) {
+    steps.push({ prayer: 'mysteryAnnounce', decadeIndex: d, mysteryIndex: d });
+    steps.push({ prayer: 'ourFather', decadeIndex: d, beadIndex: 6 + d * 11 });
     for (let h = 0; h < 10; h++) {
-      steps.push({ prayer: 'hailMary', decadeIndex: d, hailMaryIndex: h });
+      steps.push({ prayer: 'hailMary', decadeIndex: d, hailMaryIndex: h, beadIndex: 7 + d * 11 + h });
     }
+    steps.push({ prayer: 'gloryBe', decadeIndex: d, beadIndex: 6 + d * 11 + 10 });
+    steps.push({ prayer: 'fatimaPrayer', decadeIndex: d, beadIndex: 6 + d * 11 + 10 });
   }
+
+  steps.push({ prayer: 'hailHolyQueen', beadIndex: -1 });
+  steps.push({ prayer: 'closingPrayer', beadIndex: -1 });
+  steps.push({ prayer: 'signOfCross', beadIndex: -1 });
+  steps.push({ prayer: 'goInPeace', beadIndex: -1 });
+
   return steps;
 }
 
-export function getBeadPositions(cx = 300, cy = 240, rx = 168, ry = 168) {
-  const positions: any[] = [];
+// ── Bead Layout Data ────────────────────────────────────────
+
+export function getBeadPositions(cx = 300, cy = 240, rx = 168, ry = 168): Array<{x: number; y: number; type: string; size: number}> {
+  const positions: Array<{x: number; y: number; type: string; size: number}> = [];
+
+  // ── Golden Ratio Teardrop ─────────────────────────────────
+  // Formula: y = cy + ry·sin(t)·(1 − k·sin(t))
+  //
+  // k = 1/φ² ≈ 0.382  (φ = golden ratio = 1.618)
+  // RX = RY = 168  (8 × 21 — Fibonacci product; ratio 21/13 ≈ φ)
+  //
+  // The teardrop distortion amplitudes:
+  //   top  half = ry · (1 + k) = 168 · 1.382 = 232  ← wide, round
+  //   bot  half = ry · (1 − k) = 168 · 0.618 = 104  ← narrow junction
+  //   ratio top/bot = (1+k)/(1-k) = 1.382/0.618 = √5 ≈ 2.236  (divine!)
+  //
+  // Bead sizes follow φ:  HM = 10,  OF = 16  (ratio 1.6 ≈ φ)
   const k = 0.382;
-  positions.push({ x: cx, y: cy + ry * (1 - k) + 146, type: 'crucifix', size: 22 });
-  for (let i = 0; i < 55; i++) {
-    const angle = (i * 360 / 55) * Math.PI / 180;
-    const x = cx + rx * Math.cos(angle);
-    const y = cy + ry * Math.sin(angle) * (1 - k * Math.sin(angle));
-    positions.push({ x, y, type: i % 11 === 0 ? 'of' : 'hm', size: i % 11 === 0 ? 16 : 10 });
+  const tailBottom = Math.round(cy + ry * (1 - k)); // = 344 for defaults
+
+  positions.push({ x: cx, y: tailBottom + 146, type: 'crucifix',  size: 22 }); // 0 → y=490 (SVG uses scale(1.8))
+  positions.push({ x: cx, y: tailBottom +  87, type: 'of',        size: 16 }); // 1 → y=431
+  positions.push({ x: cx, y: tailBottom +  63, type: 'hm',        size: 10 }); // 2 → y=407
+  positions.push({ x: cx, y: tailBottom +  43, type: 'hm',        size: 10 }); // 3 → y=387
+  positions.push({ x: cx, y: tailBottom +  23, type: 'hm',        size: 10 }); // 4 → y=367
+  positions.push({ x: cx, y: tailBottom,        type: 'connector', size: 13 }); // 5 → y=344
+
+  const GAP_DEG = 8;
+  const arcTotal = 360 - GAP_DEG;
+  const totalLoopBeads = 55;
+  const stepDeg = arcTotal / totalLoopBeads;
+  const startDeg = 90 + GAP_DEG / 2;
+  const decadeStarts = [0, 11, 22, 33, 44];
+
+  for (let i = 0; i < totalLoopBeads; i++) {
+    const angleDeg = startDeg + i * stepDeg;
+    const t = (angleDeg * Math.PI) / 180;
+    const x = cx + rx * Math.cos(t);
+    const y = cy + ry * Math.sin(t) * (1 - k * Math.sin(t));
+    const isOf = decadeStarts.includes(i);
+    positions.push({
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      type: isOf ? 'of' : 'hm',
+      size: isOf ? 16 : 10,
+    });
   }
+
   return positions;
 }

@@ -47,14 +47,14 @@ const {
   />
 
   <style is:global>
-    /* – Reset & Base ––––––––––––––––––––––––––––––––––––––––––– */
+    /* ── Reset & Base ─────────────────────────────────────── */
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
-    /* – CSS Variables / Theming ––––––––––––––––––––––––––––––– */
+    /* ── CSS Variables / Theming ──────────────────────────── */
     :root {
       --bg:           #080808;
       --bg-secondary: #0f0e0c;
@@ -110,7 +110,7 @@ const {
     [data-mystery="glorious"]  { --accent: #1a237e; --accent2: #7ab8ff; --accent-glow: rgba(26,35,126,0.3); }
     [data-mystery="luminous"]  { --accent: #6a0dad; --accent2: #81c784; --accent-glow: rgba(106,13,173,0.3); }
 
-    /* – Typography –––––––––––––––––––––––––––––––––––––––––––– */
+    /* ── Typography ───────────────────────────────────────── */
     html {
       font-size: 16px;
       scroll-behavior: smooth;
@@ -133,7 +133,7 @@ const {
       letter-spacing: 0.04em;
     }
 
-    /* – Candle Flicker Overlay ––––––––––––––––––––––––––––––– */
+    /* ── Candle Flicker Overlay ────────────────────────────── */
     .candle-glow {
       position: fixed;
       inset: 0;
@@ -162,7 +162,7 @@ const {
       100% { opacity: 1.00; transform: scaleX(1.000) scaleY(1.000); }
     }
 
-    /* – Bead Animations ––––––––––––––––––––––––––––––––––––––– */
+    /* ── Bead Animations ──────────────────────────────────── */
     @keyframes beadPulse {
       0%, 100% {
         filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 0 6px var(--accent-glow));
@@ -189,7 +189,7 @@ const {
       50% { box-shadow: 0 0 0 12px transparent; }
     }
 
-    /* – Utility ––––––––––––––––––––––––––––––––––––––––––––– */
+    /* ── Utility ──────────────────────────────────────────── */
     .sr-only {
       position: absolute;
       width: 1px; height: 1px;
@@ -207,7 +207,7 @@ const {
       font-family: inherit;
     }
 
-    /* – Scrollbar ––––––––––––––––––––––––––––––––––––––––––– */
+    /* ── Scrollbar ─────────────────────────────────────────── */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }

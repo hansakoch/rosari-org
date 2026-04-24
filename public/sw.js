@@ -10,17 +10,22 @@ const STATIC_ASSETS = [
   '/favicon.svg',
 ];
 
+// ── Install ─────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      // Cache core assets
       return cache.addAll(STATIC_ASSETS).catch(() => {
+        // Continue even if some assets fail
         return Promise.resolve();
       });
     })
   );
+  // Activate immediately
   self.skipWaiting();
 });
 
+// ── Activate ────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -34,13 +39,18 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// ── Fetch ───────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Only cache GET requests — POST/PUT/etc. are never cacheable
   if (request.method !== 'GET') return;
+
+  // Don't intercept external resources
   if (url.origin !== self.location.origin) return;
 
+  // Network-first for HTML (always get fresh rosary)
   if (request.mode === 'navigate' || request.headers.get('Accept')?.includes('text/html')) {
     event.respondWith(
       fetch(request)
@@ -56,6 +66,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Cache-first for static assets (CSS, JS, fonts, images)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
@@ -66,18 +77,22 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => {
+        // Offline fallback
         return new Response('Offline', { status: 503 });
       });
     })
   );
 });
 
+// ── Message Handler ─────────────────────────────────────────
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'CACHE_ALL') {
+    // Pre-cache all navigable pages
     caches.open(CACHE_NAME).then((cache) => {
       cache.addAll(['/']).catch(() => {});
     });
   }
+
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
