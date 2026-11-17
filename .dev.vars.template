@@ -1,0 +1,2 @@
+# Copy to .dev.vars for local `cf dev` / wrangler
+XAI_API_KEY=xai-your-key-here

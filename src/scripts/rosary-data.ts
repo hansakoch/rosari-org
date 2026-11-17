@@ -259,20 +259,18 @@ export function getLiturgicalSeason(date: Date = new Date()): LiturgicalSeasonIn
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const year = d.getUTCFullYear();
 
-  const easter      = computeEaster(year);
-  const ashWed      = new Date(easter); ashWed.setUTCDate(easter.getUTCDate() - 46);
-  const pentecost   = new Date(easter); pentecost.setUTCDate(easter.getUTCDate() + 49);
-  const advent      = computeAdventStart(year);
-  const prevAdvent  = computeAdventStart(year - 1);
-  const baptismEnd  = computeEpiphany(year);        // end of Christmas (current Jan)
-  const christmasStart = new Date(Date.UTC(year - 1, 11, 25)); // Dec 25 of prev year
+  const easter     = computeEaster(year);
+  const ashWed     = new Date(easter); ashWed.setUTCDate(easter.getUTCDate() - 46);
+  const pentecost  = new Date(easter); pentecost.setUTCDate(easter.getUTCDate() + 49);
+  const advent     = computeAdventStart(year);
+  const baptismEnd = computeEpiphany(year); // end of Christmas (~Baptism of the Lord)
 
   // Check each season in chronological order
   if (d >= advent) {
     return { season: 'advent', name: 'Advent', tagline: 'Maranatha — Come, Lord Jesus', downloadLabel: 'Download for Advent' };
   }
-  // Christmas: Dec 25 → Baptism of the Lord (~Jan 12)
-  if ((d >= new Date(Date.UTC(year, 11, 25))) || d <= baptismEnd) {
+  // Christmas: Dec 25 → Baptism of the Lord (~Jan 12), or Jan 1 → Baptism
+  if (d >= new Date(Date.UTC(year, 11, 25)) || d <= baptismEnd) {
     return { season: 'christmas', name: 'Christmas', tagline: 'Gloria in Excelsis Deo', downloadLabel: 'Download for Christmas' };
   }
   // Lent: Ash Wednesday → Holy Saturday
@@ -289,7 +287,7 @@ export function getLiturgicalSeason(date: Date = new Date()): LiturgicalSeasonIn
 
 // ── Rosary Sequence Builder ─────────────────────────────────
 
-export function buildRosarySequence(mysteryType: MysteryType): RosaryStep[] {
+export function buildRosarySequence(_mysteryType: MysteryType): RosaryStep[] {
   const steps: RosaryStep[] = [];
 
   steps.push({ prayer: 'signOfCross', beadIndex: -1 });

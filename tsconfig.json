@@ -1,11 +1,13 @@
 {
   "extends": "astro/tsconfigs/strictest",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "target": "ES2022"
-  }
+    "target": "ES2022",
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": ["src/**/*", "worker/**/*", "cloudflare.config.ts", "wrangler.config.ts"],
+  "exclude": ["dist", "node_modules", ".cloudflare"]
 }

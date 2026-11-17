@@ -94,6 +94,16 @@ import KaraokeText from '../components/KaraokeText.astro';
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
 
+  /** Escape text before injecting into karaoke HTML (translated TTS text is untrusted). */
+  function escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   // ── Liturgical season (set once on boot) ──────────────────
   function initSeasonalFooter(): void {
     const info = getLiturgicalSeason();
@@ -158,7 +168,7 @@ import KaraokeText from '../components/KaraokeText.astro';
     if (start > 0) parts.push(`<span class="kw kw-ellipsis">…</span>`);
 
     for (let i = start; i < end; i++) {
-      const w = words[i]!;
+      const w = escapeHtml(words[i]!);
       const dist = i - wordIdx;
       let cls = 'kw';
       if (dist < 0)          cls += ' kw-past';
@@ -337,6 +347,7 @@ import KaraokeText from '../components/KaraokeText.astro';
 
     savePreferences({
       language: currentLanguage,
+      languageCode: currentLanguageCode,
       voiceDescription: currentVoiceDesc,
       theme: (document.documentElement.getAttribute('data-theme') as 'night' | 'day') || 'night',
     }).catch(() => {});
@@ -361,7 +372,7 @@ import KaraokeText from '../components/KaraokeText.astro';
   }
 
   // ── Controls ───────────────────────────────────────────────
-  el('play-pause-btn')?.addEventListener('click', () => {
+  function togglePlayPause(): void {
     audioManager.unlock();
     if (!engine) { startRosary(); return; }
     const state = engine.getState();
@@ -381,6 +392,18 @@ import KaraokeText from '../components/KaraokeText.astro';
       playNextStep();
     } else {
       isRunning = true; engine.start(); renderState(engine.getState()); playNextStep();
+    }
+  }
+
+  el('play-pause-btn')?.addEventListener('click', () => togglePlayPause());
+
+  // Space / MediaPlayPause — pause/resume (ignore when typing in an input)
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+    if (e.code === 'Space' || e.key === ' ' || e.key === 'MediaPlayPause') {
+      e.preventDefault();
+      togglePlayPause();
     }
   });
 
@@ -408,7 +431,12 @@ import KaraokeText from '../components/KaraokeText.astro';
     const cur = document.documentElement.getAttribute('data-theme');
     const next = cur === 'day' ? 'night' : 'day';
     applyTheme(next);
-    savePreferences({ language: currentLanguage, voiceDescription: currentVoiceDesc, theme: next }).catch(() => {});
+    savePreferences({
+      language: currentLanguage,
+      languageCode: currentLanguageCode,
+      voiceDescription: currentVoiceDesc,
+      theme: next,
+    }).catch(() => {});
   });
 
   el('change-language-btn')?.addEventListener('click', () => {
@@ -486,8 +514,9 @@ import KaraokeText from '../components/KaraokeText.astro';
     if (banner) banner.textContent = MYSTERY_SETS[getMysteryForDate()]?.name ?? '';
 
     if (prefs?.language) {
-      currentLanguage    = prefs.language;
-      currentVoiceDesc   = prefs.voiceDescription || currentVoiceDesc;
+      currentLanguage     = prefs.language;
+      currentLanguageCode = prefs.languageCode || currentLanguageCode;
+      currentVoiceDesc    = prefs.voiceDescription || currentVoiceDesc;
 
       const resume = el('resume-banner');
       if (resume) {

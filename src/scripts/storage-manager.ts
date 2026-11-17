@@ -7,6 +7,7 @@ const DB_VERSION = 1;
 
 interface RosaryPreferences {
   language: string;
+  languageCode?: string;
   voiceDescription: string;
   theme: 'night' | 'day';
   secondLanguage?: string;

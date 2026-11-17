@@ -2,17 +2,27 @@
   "name": "rosari-org",
   "description": "Premium Catholic rosary prayer web application — rosari.org",
   "type": "module",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "typecheck": "tsrs --noEmit -p tsconfig.json",
+    "cf:dev": "astro build && cf dev",
+    "cf:deploy": "astro build && cf deploy",
+    "deploy": "npm run cf:deploy"
   },
   "dependencies": {
-    "astro": "^5.1.8"
+    "astro": "^7.4.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261023.1",
+    "cf": "1.0.0-beta.21",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "typescript": "^7.0.2"
   },
   "engines": {
-    "node": ">=18.14.1"
+    "node": ">=22.23.4"
   }
 }

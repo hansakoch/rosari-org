@@ -90,12 +90,13 @@ export class AudioManager {
 
   // ── Generate and decode audio for a prayer step ──────────
 
-  async generateAudio(req: TTSRequest, signal: AbortSignal): Promise<{
+  async generateAudio(req: TTSRequest, signal?: AbortSignal): Promise<{
     buffer: AudioBuffer;
     wordTimings?: WordTiming[];
     translatedText?: string;
   }> {
     const cacheKey = buildCacheKey(req.prayerKey, req.language, req.voiceDescription);
+    const abort = signal ?? new AbortController().signal;
 
     // Try local cache first
     const cached = await loadAudioCache(cacheKey);
@@ -114,7 +115,7 @@ export class AudioManager {
     }
 
     // Fetch from xAI (throws on network error or abort)
-    const { data: xaiData, translatedText } = await this.fetchXAIAudio(req, signal);
+    const { data: xaiData, translatedText } = await this.fetchXAIAudio(req, abort);
 
     const ctx = this.getCtx();
     const buffer = await this.decodeWithFallback(ctx, xaiData.slice(0));

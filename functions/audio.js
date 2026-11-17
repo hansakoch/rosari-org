@@ -1,58 +1,81 @@
 /**
- * tts.js — Cloudflare Pages Function: xAI TTS proxy
+ * Pages Function: POST /audio — KV-first TTS.
+ * Misses go through Cloudflare AI Gateway Unified Billing (`xai/grok-tts`),
+ * billed to Iceberg Media CF credits — not the depleted direct xAI prepaid balance.
  *
- * xAI TTS WebSocket API
- *   wss://api.x.ai/v1/tts?language=<BCP47>&voice=<name>&codec=mp3&sample_rate=24000&bit_rate=128000
- *
- * Flow:
- *   Client → server:  {"type":"text.delta","delta":"..."} then {"type":"text.done"}
- *   Server → client:  {"type":"audio.delta","delta":"<base64 MP3 bytes>"} …then {"type":"audio.done"}
- *
- * Available voices: ara (female warm) | rex (male reverent) | sal (neutral) | eve (female) | leo (male)
- *
- * KV binding:  AUDIO_CACHE (optional — cache MP3 bytes)
- * Env var:     XAI_API_KEY (required)
+ * CACHE_VERSION must remain v5-mp3 to hit existing rosari-audio-cache clips.
  */
 
-const CACHE_VERSION = 'v5-mp3'; // bumped: invalidates pre-translation cached audio
-const XAI_TTS_URL   = 'https://api.x.ai/v1/tts';   // Worker upgrades to wss://
-const SAMPLE_RATE   = 24000;
-const BIT_RATE      = 128000;
+const CACHE_VERSION = 'v5-mp3';
+const AIG_GATEWAY_ID = 'rosari';
+const MAX_TEXT_LEN = 8000;
 
-const CORS = {
-  'Access-Control-Allow-Origin':   '*',
-  'Access-Control-Allow-Methods':  'POST, OPTIONS',
-  'Access-Control-Allow-Headers':  'Content-Type',
-  // Allow client JS to read these response headers
-  'Access-Control-Expose-Headers': 'X-Translated-Text, X-TTS-Provider, X-Voice, X-Language',
-};
+const ALLOWED_ORIGINS = new Set([
+  'https://rosari.org',
+  'https://www.rosari.org',
+  'http://localhost:4321',
+  'http://127.0.0.1:4321',
+  'http://localhost:8787',
+  'http://127.0.0.1:8787',
+]);
 
-// ── Pick xAI voice ─────────────────────────────────────────────────────────
+function corsHeaders(origin) {
+  const allowed = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://rosari.org';
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Expose-Headers': 'X-Translated-Text, X-TTS-Provider, X-Voice, X-Language',
+    Vary: 'Origin',
+  };
+}
+
+function jsonError(status, error, origin) {
+  return new Response(JSON.stringify({ error }), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) },
+  });
+}
+
+function isAllowedRequest(request) {
+  const origin = request.headers.get('Origin');
+  if (origin) return ALLOWED_ORIGINS.has(origin);
+  const referer = request.headers.get('Referer');
+  if (!referer) return false;
+  try {
+    return ALLOWED_ORIGINS.has(new URL(referer).origin);
+  } catch {
+    return false;
+  }
+}
 
 function pickVoice(voiceDescription) {
   const desc = (voiceDescription || '').toLowerCase();
   if (desc.includes('woman') || desc.includes('female') || desc.includes('feminine')) return 'ara';
-  // Broad set of male/elderly/religious descriptors
   if (
     desc.includes(' man') || desc.includes('male') || desc.includes('masculine') ||
-    desc.includes('priest') || desc.includes('father') || desc.includes('friar')  ||
-    desc.includes('monk')   || desc.includes('elderly') || desc.includes('aged')  ||
+    desc.includes('priest') || desc.includes('father') || desc.includes('friar') ||
+    desc.includes('monk') || desc.includes('elderly') || desc.includes('aged') ||
     desc.includes('farmer') || desc.includes('grandfather') || desc.includes('old ')
   ) return 'rex';
-  return 'rex'; // default to male voice for rosary
+  return 'rex';
 }
 
-// ── Translate prayer text via xAI chat ─────────────────────────────────────
+async function buildCacheKey(text, language, voiceDescription) {
+  const raw = [
+    CACHE_VERSION,
+    text.trim().toLowerCase(),
+    (language || 'english').trim().toLowerCase(),
+    (voiceDescription || '').trim().toLowerCase(),
+  ].join('::');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return `audio::${Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
 
-async function translateText(text, targetLanguage, apiKey) {
-  const response = await fetch('https://api.x.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify({
-      model: 'grok-3-mini',
+async function translateText(text, targetLanguage, ai) {
+  const resp = await ai.run(
+    'xai/grok-3-mini',
+    {
       messages: [
         {
           role: 'system',
@@ -65,143 +88,93 @@ async function translateText(text, targetLanguage, apiKey) {
       ],
       max_tokens: 2000,
       temperature: 0.1,
-    }),
-  });
-  if (!response.ok) throw new Error(`Translation HTTP ${response.status}`);
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || text;
-}
-
-// ── SHA-256 cache key ──────────────────────────────────────────────────────
-
-async function buildCacheKey(text, language, voiceDescription) {
-  const raw = [
-    CACHE_VERSION,
-    text.trim().toLowerCase(),
-    (language || 'english').trim().toLowerCase(),
-    (voiceDescription || '').trim().toLowerCase(),
-  ].join('::');
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-  const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-  return `audio::${hex}`;
-}
-
-// ── xAI TTS via WebSocket ─────────────────────────────────────────────────
-
-async function xaiTTS(text, languageCode, voiceDescription, apiKey) {
-  const voice = pickVoice(voiceDescription);
-  // xAI uses BCP-47 base codes: 'en', 'pt', 'zh' etc. or full codes like 'pt-BR'
-  const lang = (languageCode || 'en').replace('_', '-');
-
-  const url = new URL(XAI_TTS_URL);
-  url.searchParams.set('language',    lang);
-  url.searchParams.set('voice',       voice);
-  url.searchParams.set('codec',       'mp3');
-  url.searchParams.set('sample_rate', String(SAMPLE_RATE));
-  url.searchParams.set('bit_rate',    String(BIT_RATE));
-
-  // Cloudflare Workers outbound WebSocket upgrade via fetch()
-  const wsRes = await fetch(url.toString(), {
-    headers: {
-      'Authorization':         `Bearer ${apiKey}`,
-      'Upgrade':               'websocket',
-      'Connection':            'Upgrade',
-      'Sec-WebSocket-Version': '13',
-      'Sec-WebSocket-Key':     btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))),
     },
-  });
+    { gateway: { id: AIG_GATEWAY_ID } },
+  );
 
-  if (!wsRes.webSocket) {
-    let detail = `HTTP ${wsRes.status}`;
-    try { const t = await wsRes.text(); if (t) detail += `: ${t.slice(0, 200)}`; } catch {}
-    throw new Error(`WebSocket upgrade failed — ${detail}`);
+  // AI.run chat shapes vary: string | { response } | { choices }
+  if (typeof resp === 'string') return resp.trim() || text;
+  if (resp?.response && typeof resp.response === 'string') return resp.response.trim() || text;
+  const choice = resp?.choices?.[0]?.message?.content;
+  if (typeof choice === 'string') return choice.trim() || text;
+  if (resp?.result?.response) return String(resp.result.response).trim() || text;
+  return text;
+}
+
+/** Unified Billing TTS via Workers AI binding → temporary MP3 URL → bytes */
+async function gatewayTTS(text, languageCode, voiceDescription, ai) {
+  const voice = pickVoice(voiceDescription);
+  const lang = (languageCode || 'en').replace('_', '-').split('-')[0] || 'en';
+
+  const resp = await ai.run(
+    'xai/grok-tts',
+    {
+      text,
+      language: lang,
+      voice_id: voice,
+      output_format: { codec: 'mp3', sample_rate: 24000, bit_rate: 128000 },
+    },
+    { gateway: { id: AIG_GATEWAY_ID } },
+  );
+
+  if (resp?.state && resp.state !== 'Completed') {
+    throw new Error(`TTS state ${resp.state}`);
   }
 
-  const ws = wsRes.webSocket;
-  ws.accept();
+  const audio = resp?.result?.audio ?? resp?.audio;
+  if (!audio) throw new Error('TTS returned no audio');
 
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let done = false;
+  if (typeof audio === 'string' && audio.startsWith('http')) {
+    const r = await fetch(audio);
+    if (!r.ok) throw new Error(`Audio fetch HTTP ${r.status}`);
+    const buf = await r.arrayBuffer();
+    if (buf.byteLength < 100) throw new Error('Empty audio download');
+    return buf;
+  }
 
-    const timer = setTimeout(() => {
-      try { ws.close(); } catch {}
-      reject(new Error('xAI TTS timeout (30s)'));
-    }, 30000);
+  if (typeof audio === 'string') {
+    const b64 = audio.replace(/^data:audio\/\w+;base64,/, '');
+    const raw = atob(b64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out.buffer;
+  }
 
-    const finish = (err) => {
-      clearTimeout(timer);
-      try { ws.close(); } catch {}
-      if (err) { reject(err); return; }
-
-      const totalLen = chunks.reduce((s, c) => s + c.byteLength, 0);
-      if (totalLen < 100) { reject(new Error('xAI returned empty audio')); return; }
-
-      const out = new Uint8Array(totalLen);
-      let offset = 0;
-      for (const c of chunks) { out.set(new Uint8Array(c), offset); offset += c.byteLength; }
-      resolve(out.buffer);
-    };
-
-    ws.addEventListener('message', (event) => {
-      let msg;
-      try { msg = JSON.parse(event.data); } catch { return; }
-
-      if (msg.type === 'audio.delta' && msg.delta) {
-        const raw = atob(msg.delta);
-        const b   = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) b[i] = raw.charCodeAt(i);
-        chunks.push(b.buffer);
-      } else if (msg.type === 'audio.done') {
-        if (!done) { done = true; finish(null); }
-      } else if (msg.type === 'error') {
-        finish(new Error(msg.message || JSON.stringify(msg)));
-      }
-    });
-
-    ws.addEventListener('error',  (e)  => finish(new Error(`WebSocket error: ${String(e)}`)));
-    ws.addEventListener('close',  (e)  => { if (!done) finish(new Error(`WebSocket closed early: ${e.code} ${e.reason}`)); });
-
-    // Send text
-    ws.send(JSON.stringify({ type: 'text.delta', delta: text }));
-    ws.send(JSON.stringify({ type: 'text.done'               }));
-  });
+  throw new Error('Unexpected TTS audio payload');
 }
 
-// ── POST handler ──────────────────────────────────────────────────────────
-
 export async function onRequestPost(context) {
+  const origin = context.request.headers.get('Origin');
+  try {
+    return await handlePost(context);
+  } catch (err) {
+    console.error('[tts] unhandled:', err?.message || err);
+    return jsonError(503, 'TTS unavailable', origin);
+  }
+}
+
+async function handlePost(context) {
   const { request, env } = context;
+  const origin = request.headers.get('Origin');
+
+  if (!isAllowedRequest(request)) {
+    return jsonError(403, 'Forbidden origin', origin);
+  }
 
   let body;
   try { body = await request.json(); }
-  catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
-    });
-  }
+  catch { return jsonError(400, 'Invalid JSON', origin); }
 
   const {
     text,
-    language          = 'English',
-    language_code     = 'en',
+    language = 'English',
+    language_code = 'en',
     voice_description = 'elderly male, gravelly, slow and reverent',
   } = body;
 
-  if (!text || typeof text !== 'string' || text.trim().length === 0 || text.length > 8000) {
-    return new Response(JSON.stringify({ error: 'Invalid text (1–8000 chars required)' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...CORS },
-    });
+  if (!text || typeof text !== 'string' || text.trim().length === 0 || text.length > MAX_TEXT_LEN) {
+    return jsonError(400, `Invalid text (1–${MAX_TEXT_LEN} chars required)`, origin);
   }
-
-  const apiKey = env.XAI_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'XAI_API_KEY not configured on server' }), {
-      status: 503, headers: { 'Content-Type': 'application/json', ...CORS },
-    });
-  }
-
-  // ── KV cache check ──────────────────────────────────────────────────────
 
   const cacheKey = await buildCacheKey(text, language, voice_description);
   const kv = env.AUDIO_CACHE;
@@ -210,18 +183,16 @@ export async function onRequestPost(context) {
     try {
       const { value: cached, metadata } = await kv.getWithMetadata(cacheKey, { type: 'arrayBuffer' });
       if (cached && cached.byteLength > 100) {
-        const extraHeaders = {};
-        if (metadata?.translatedText) {
-          extraHeaders['X-Translated-Text'] = metadata.translatedText;
-        }
+        const extra = {};
+        if (metadata?.translatedText) extra['X-Translated-Text'] = metadata.translatedText;
         return new Response(cached, {
           status: 200,
           headers: {
-            'Content-Type':   'audio/mpeg',
-            'Cache-Control':  'public, max-age=31536000, immutable',
+            'Content-Type': 'audio/mpeg',
+            'Cache-Control': 'public, max-age=31536000, immutable',
             'X-TTS-Provider': 'cache',
-            ...CORS,
-            ...extraHeaders,
+            ...corsHeaders(origin),
+            ...extra,
           },
         });
       }
@@ -230,38 +201,31 @@ export async function onRequestPost(context) {
     }
   }
 
-  // ── Translate if not English or Latin ───────────────────────────────────
+  if (!env.AI) {
+    return jsonError(503, 'AI binding not configured', origin);
+  }
 
   const isEnglish = /^en/i.test(language_code);
-  const isLatin   = language_code === 'la';
+  const isLatin = language_code === 'la';
   let ttsText = text;
   if (!isEnglish && !isLatin) {
     try {
-      ttsText = await translateText(text, language, apiKey);
+      ttsText = await translateText(text, language, env.AI);
     } catch (e) {
-      console.warn('[tts] translation failed, falling back to source text:', e.message);
+      console.warn('[tts] translation failed:', e.message);
+      return jsonError(503, 'Translation failed', origin);
     }
   }
 
-  // ── Call xAI TTS ────────────────────────────────────────────────────────
-
   let mp3Buffer;
   try {
-    mp3Buffer = await xaiTTS(ttsText, language_code, voice_description, apiKey);
+    mp3Buffer = await gatewayTTS(ttsText, language_code, voice_description, env.AI);
   } catch (err) {
-    console.error('[tts] xAI error:', err.message);
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 502, headers: { 'Content-Type': 'application/json', ...CORS } }
-    );
+    console.error('[tts] gateway error:', err.message);
+    return jsonError(503, 'TTS provider error (cache miss)', origin);
   }
 
-  // ── Cache + respond ─────────────────────────────────────────────────────
-
-  // Percent-encode translated text for the response header
-  // (prayer texts can contain commas, apostrophes, etc.)
   const encodedTranslation = encodeURIComponent(ttsText).substring(0, 3000);
-
   if (kv) {
     kv.put(cacheKey, mp3Buffer, {
       metadata: {
@@ -269,29 +233,28 @@ export async function onRequestPost(context) {
         voice: pickVoice(voice_description),
         translatedText: encodedTranslation,
         cachedAt: new Date().toISOString(),
+        via: 'aig-unified',
       },
-    }).catch(e => console.warn('[tts] KV write error:', e.message));
+    }).catch((e) => console.warn('[tts] KV write error:', e.message));
   }
 
   return new Response(mp3Buffer, {
     status: 200,
     headers: {
-      'Content-Type':        'audio/mpeg',
-      'Cache-Control':       'public, max-age=31536000, immutable',
-      'X-TTS-Provider':      'xai-tts',
-      'X-Voice':             pickVoice(voice_description),
-      'X-Language':          language,
-      'X-Translated-Text':   encodedTranslation,
-      ...CORS,
+      'Content-Type': 'audio/mpeg',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-TTS-Provider': 'cf-aig-unified',
+      'X-Voice': pickVoice(voice_description),
+      'X-Language': language,
+      'X-Translated-Text': encodedTranslation,
+      ...corsHeaders(origin),
     },
   });
 }
 
-// ── OPTIONS ────────────────────────────────────────────────────────────────
-
-export async function onRequestOptions() {
+export async function onRequestOptions(context) {
   return new Response(null, {
     status: 204,
-    headers: { ...CORS, 'Access-Control-Max-Age': '86400' },
+    headers: { ...corsHeaders(context.request.headers.get('Origin')), 'Access-Control-Max-Age': '86400' },
   });
 }

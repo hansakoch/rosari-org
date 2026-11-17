@@ -3,7 +3,7 @@
  * Provides offline support, asset caching, and background sync
  */
 
-const CACHE_NAME = 'rosari-v4';
+const CACHE_NAME = 'rosari-v5';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -49,6 +49,9 @@ self.addEventListener('fetch', (event) => {
 
   // Don't intercept external resources
   if (url.origin !== self.location.origin) return;
+
+  // Never cache the TTS API (even if a GET sneaks through)
+  if (url.pathname === '/audio' || url.pathname.startsWith('/audio/')) return;
 
   // Network-first for HTML (always get fresh rosary)
   if (request.mode === 'navigate' || request.headers.get('Accept')?.includes('text/html')) {

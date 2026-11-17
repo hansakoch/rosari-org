@@ -4,8 +4,10 @@ node_modules/
 dist/
 build/
 .astro/
+.cloudflare/
 package-lock.json
 .env
 .dev.vars
 .wrangler/
 wrangler.toml.local
+*.tsbuildinfo
