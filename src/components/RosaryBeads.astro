@@ -87,34 +87,41 @@
         Translate(300,490) puts the origin at top of cross body.
         scale(1.8) expands all child coordinates by 1.8× from that origin.
       -->
+      <!--
+        Outer g keeps the SVG transform (position/scale).
+        Inner g receives the bounce animation — CSS transform must NEVER
+        land on the outer g or it replaces translate(300,490) and the cross vanishes.
+      -->
       <g id="bead-crucifix" class="bead-group bead-crucifix" data-bead-idx="0"
          transform="translate(300, 490) scale(1.8)">
-        <!-- Connector bead -->
-        <circle cx="0" cy="-26" r="8" fill="url(#bg-of)" stroke="#c9a84c" stroke-width="0.8"/>
+        <g class="crucifix-inner">
+          <!-- Connector bead -->
+          <circle cx="0" cy="-26" r="8" fill="url(#bg-of)" stroke="#c9a84c" stroke-width="0.8"/>
 
-        <!-- Glow halo behind cross (always visible, not just on active) -->
-        <rect x="-8" y="-17" width="16" height="55" rx="3"
-          fill="none" stroke="#f5d06e" stroke-width="2" opacity="0.25"
-          filter="url(#glow)"/>
+          <!-- Glow halo behind cross (always visible, not just on active) -->
+          <rect x="-8" y="-17" width="16" height="55" rx="3"
+            fill="none" stroke="#f5d06e" stroke-width="2" opacity="0.25"
+            filter="url(#glow)"/>
 
-        <!-- Cross vertical beam -->
-        <rect x="-8" y="-17" width="16" height="55" rx="3"
-          fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.6"/>
+          <!-- Cross vertical beam -->
+          <rect x="-8" y="-17" width="16" height="55" rx="3"
+            fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.6"/>
 
-        <!-- Cross horizontal beam -->
-        <rect x="-20" y="-4" width="40" height="13" rx="3"
-          fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.6"/>
+          <!-- Cross horizontal beam -->
+          <rect x="-20" y="-4" width="40" height="13" rx="3"
+            fill="url(#cross-gold)" stroke="#5a3e10" stroke-width="0.6"/>
 
-        <!-- INRI tablet -->
-        <rect x="-9" y="-24" width="18" height="9" rx="2"
-          fill="#c9a84c" opacity="0.9"/>
-        <text x="0" y="-17.5" text-anchor="middle" font-family="serif" font-size="5.5"
-          fill="#1a0e00" font-weight="bold" letter-spacing="1">INRI</text>
+          <!-- INRI tablet -->
+          <rect x="-9" y="-24" width="18" height="9" rx="2"
+            fill="#c9a84c" opacity="0.9"/>
+          <text x="0" y="-17.5" text-anchor="middle" font-family="serif" font-size="5.5"
+            fill="#1a0e00" font-weight="bold" letter-spacing="1">INRI</text>
 
-        <!-- Corpus -->
-        <ellipse cx="0" cy="9" rx="5.5" ry="7.5" fill="#f5d06e" opacity="0.55"/>
-        <line x1="-7" y1="6"  x2="7"  y2="6"  stroke="#1a0e00" stroke-width="1.1" opacity="0.45"/>
-        <line x1="0"  y1="-1" x2="0"  y2="20" stroke="#1a0e00" stroke-width="1.1" opacity="0.45"/>
+          <!-- Corpus -->
+          <ellipse cx="0" cy="9" rx="5.5" ry="7.5" fill="#f5d06e" opacity="0.55"/>
+          <line x1="-7" y1="6"  x2="7"  y2="6"  stroke="#1a0e00" stroke-width="1.1" opacity="0.45"/>
+          <line x1="0"  y1="-1" x2="0"  y2="20" stroke="#1a0e00" stroke-width="1.1" opacity="0.45"/>
+        </g>
       </g>
 
       <!-- Bead groups populated by JS -->
@@ -290,13 +297,21 @@
 
   .bead-group.is-active {
     opacity: 1;
+  }
+  /* Crucifix excluded: its outer g carries the SVG translate/scale, and a CSS
+     transform animation on it overrides that attribute and flings the cross off-screen. */
+  .bead-group.is-active:not(.bead-crucifix) {
     animation: beadBounce 1.6s ease-in-out infinite;
   }
 
-  /* Crucifix active glow */
+  /* Crucifix: animate INNER only so SVG translate/scale on the outer g stays intact */
   .bead-crucifix.is-active {
     filter: drop-shadow(0 0 10px var(--gold)) drop-shadow(0 0 22px var(--gold-glow));
+  }
+  .bead-crucifix.is-active .crucifix-inner {
     animation: beadBounce 2s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
   }
 
   @keyframes beadBounce {
